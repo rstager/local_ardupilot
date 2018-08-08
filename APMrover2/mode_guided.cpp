@@ -29,6 +29,18 @@ void ModeGuided::update()
             // determine if we should keep navigating
             if (!_reached_destination || (rover.is_boat() && !near_wp)) {
                 // drive towards destination
+#ifdef NEVER
+                if (_center != 0) {
+                    Location origin;
+                    Location destination;
+                    float d=get_distance(rover.current_loc,_center);
+
+                    feedforward =_desired_yaw_rate_cds * _desired_speed;
+                    calc_steering_to_waypoint(_reached_destination ? rover.current_loc : origin, destination, feedforward);
+                } else {
+                    calc_steering_to_waypoint(_reached_destination ? rover.current_loc : _origin, _destination);
+                }
+#endif
                 calc_steering_to_waypoint(_reached_destination ? rover.current_loc : _origin, _destination);
                 calc_throttle(calc_reduced_speed_for_turn_or_distance(_desired_speed), true, true);
             } else {
@@ -98,6 +110,18 @@ void ModeGuided::set_desired_location(const struct Location& destination)
 
     // handle guided specific initialisation and logging
     _guided_mode = ModeGuided::Guided_WP;
+    rover.Log_Write_GuidedTarget(_guided_mode, Vector3f(_destination.lat, _destination.lng, 0), Vector3f(_desired_speed, 0.0f, 0.0f));
+}
+
+// set desired location
+void ModeGuided::set_desired_location_with_origin(const struct Location& destination,const struct Location& origin)
+{
+    // call parent
+    Mode::set_desired_location_with_origin(destination, origin);
+
+    // handle guided specific initialisation and logging
+    _guided_mode = ModeGuided::Guided_WP;
+    // TODO: add new log_Write
     rover.Log_Write_GuidedTarget(_guided_mode, Vector3f(_destination.lat, _destination.lng, 0), Vector3f(_desired_speed, 0.0f, 0.0f));
 }
 

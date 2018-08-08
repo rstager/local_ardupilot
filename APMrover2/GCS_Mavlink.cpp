@@ -1051,7 +1051,138 @@ void GCS_MAVLINK_Rover::handleMessage(mavlink_message_t* msg)
             }
 
             // set guided mode targets
+            if (!pos_ignore && !yaw_ignore) {
+                // consume position target on a bearing line
+                Location origin = target_loc;
+                location_update(origin,target_yaw_cd/100.0,get_distance(target_loc,rover.current_loc));
+                hal.console->printf("Lat: ");
+                print_latlon(hal.console, target_loc.lat);
+                hal.console->printf(" Lon: ");
+                print_latlon(hal.console, target_loc.lng);
+                hal.console->printf("Lat: ");
+                print_latlon(hal.console, origin.lat);
+                hal.console->printf(" Lon: ");
+                print_latlon(hal.console, origin.lng);
+                hal.console->printf("\n");
+                rover.mode_guided.set_desired_location_with_origin(target_loc,origin);
+            } else if (!pos_ignore) {
+                // consume position target
+                //rover.mode_guided._radius = target_speed/target_turn_rate_cds;
+                //rover.mode_guided._center = target_location - _radius
+                rover.mode_guided.set_desired_location(target_loc);
+            } else if (pos_ignore && !vel_ignore && acc_ignore && yaw_ignore && yaw_rate_ignore) {
+                // consume velocity
+                rover.mode_guided.set_desired_heading_and_speed(target_yaw_cd, speed_dir * target_speed);
+            } else if (pos_ignore && !vel_ignore && acc_ignore && yaw_ignore && !yaw_rate_ignore) {
+                // consume velocity and turn rate
+                rover.mode_guided.set_desired_turn_rate_and_speed(target_turn_rate_cds, speed_dir * target_speed);
+            } else if (pos_ignore && !vel_ignore && acc_ignore && !yaw_ignore && yaw_rate_ignore) {
+                // consume velocity
+                rover.mode_guided.set_desired_heading_and_speed(target_yaw_cd, speed_dir * target_speed);
+            } else if (pos_ignore && vel_ignore && acc_ignore && !yaw_ignore && yaw_rate_ignore) {
+                // consume just target heading (probably only skid steering vehicles can do this)
+                rover.mode_guided.set_desired_heading_and_speed(target_yaw_cd, 0.0f);
+            } else if (pos_ignore && vel_ignore && acc_ignore && yaw_ignore && !yaw_rate_ignore) {
+                // consume just turn rate(probably only skid steering vehicles can do this)
+                rover.mode_guided.set_desired_turn_rate_and_speed(target_turn_rate_cds, 0.0f);
+            }
+            break;
+        }
+        case MAVLINK_MSG_ID_SET_POSITION_TARGET_WITH_ORIGIN_GLOBAL_INT:    // MAV ID: 11033
+        {
+            // decode packet
+            mavlink_set_position_target_with_origin_global_int_t packet;
+            mavlink_msg_set_position_target_with_origin_global_int_decode(msg, &packet);
+
+            // exit if vehicle is not in Guided mode
+            if (rover.control_mode != &rover.mode_guided) {
+                break;
+            }
+            // check for supported coordinate frames
+            if (packet.coordinate_frame != MAV_FRAME_GLOBAL &&
+                packet.coordinate_frame != MAV_FRAME_GLOBAL_INT &&
+                packet.coordinate_frame != MAV_FRAME_GLOBAL_RELATIVE_ALT &&
+                packet.coordinate_frame != MAV_FRAME_GLOBAL_RELATIVE_ALT_INT &&
+                packet.coordinate_frame != MAV_FRAME_GLOBAL_TERRAIN_ALT &&
+                packet.coordinate_frame != MAV_FRAME_GLOBAL_TERRAIN_ALT_INT) {
+                break;
+            }
+            bool pos_ignore = packet.type_mask & MAVLINK_SET_POS_TYPE_MASK_POS_IGNORE;
+            bool origin_ignore = packet.type_mask & MAVLINK_SET_POS_TYPE_MASK_ORIGIN_IGNORE;
+            bool vel_ignore = packet.type_mask & MAVLINK_SET_POS_TYPE_MASK_VEL_IGNORE;
+            bool acc_ignore = packet.type_mask & MAVLINK_SET_POS_TYPE_MASK_ACC_IGNORE;
+            bool yaw_ignore = packet.type_mask & MAVLINK_SET_POS_TYPE_MASK_YAW_IGNORE;
+            bool yaw_rate_ignore = packet.type_mask & MAVLINK_SET_POS_TYPE_MASK_YAW_RATE_IGNORE;
+
+            // prepare target position
+            Location target_loc = rover.current_loc;
+            Location origin_loc = rover.current_loc;
             if (!pos_ignore) {
+                // sanity check location
+                if (!check_latlng(packet.lat_int, packet.lon_int)) {
+                    // result = MAV_RESULT_FAILED;
+                    break;
+                }
+                target_loc.lat = packet.lat_int;
+                target_loc.lng = packet.lon_int;
+            }
+            if (!origin_ignore) {
+                // sanity check location
+                if (!check_latlng(packet.origin_lat_int, packet.origin_lon_int)) {
+                    // result = MAV_RESULT_FAILED;
+                    break;
+                }
+                origin_loc.lat = packet.origin_lat_int;
+                origin_loc.lng = packet.origin_lon_int;
+            }
+
+            float target_speed = 0.0f;
+            float target_yaw_cd = 0.0f;
+
+            // consume velocity and convert to target speed and heading
+            if (!vel_ignore) {
+                const float speed_max = rover.control_mode->get_speed_default();
+                // convert vector length into a speed
+                target_speed = constrain_float(safe_sqrt(sq(packet.vx) + sq(packet.vy)), -speed_max, speed_max);
+                // convert vector direction to target yaw
+                target_yaw_cd = degrees(atan2f(packet.vy, packet.vx)) * 100.0f;
+
+                // rotate target yaw if provided in body-frame
+                if (packet.coordinate_frame == MAV_FRAME_BODY_NED || packet.coordinate_frame == MAV_FRAME_BODY_OFFSET_NED) {
+                    target_yaw_cd = wrap_180_cd(target_yaw_cd + rover.ahrs.yaw_sensor);
+                }
+            }
+
+            // consume yaw heading
+            if (!yaw_ignore) {
+                target_yaw_cd = ToDeg(packet.yaw) * 100.0f;
+                // rotate target yaw if provided in body-frame
+                if (packet.coordinate_frame == MAV_FRAME_BODY_NED || packet.coordinate_frame == MAV_FRAME_BODY_OFFSET_NED) {
+                    target_yaw_cd = wrap_180_cd(target_yaw_cd + rover.ahrs.yaw_sensor);
+                }
+            }
+            // consume yaw rate
+            float target_turn_rate_cds = 0.0f;
+            if (!yaw_rate_ignore) {
+                target_turn_rate_cds = ToDeg(packet.yaw_rate) * 100.0f;
+            }
+
+            // handling case when both velocity and either yaw or yaw-rate are provided
+            // by default, we consider that the rover will drive forward
+            float speed_dir = 1.0f;
+            if (!vel_ignore && (!yaw_ignore || !yaw_rate_ignore)) {
+                // Note: we are using the x-axis velocity to determine direction even though
+                // the frame is provided in MAV_FRAME_GLOBAL_xxx
+                if (is_negative(packet.vx)) {
+                    speed_dir = -1.0f;
+                }
+            }
+
+            // set guided mode targets
+            if (!pos_ignore && !origin_ignore) {
+                // consume position target
+                rover.mode_guided.set_desired_location_with_origin(target_loc, origin_loc);
+            } else if (!pos_ignore) {
                 // consume position target
                 rover.mode_guided.set_desired_location(target_loc);
             } else if (pos_ignore && !vel_ignore && acc_ignore && yaw_ignore && yaw_rate_ignore) {

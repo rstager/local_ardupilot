@@ -89,6 +89,11 @@ public:
     //   next_leg_bearing_cd should be heading to the following waypoint (used to slow the vehicle in order to make the turn)
     virtual void set_desired_location(const struct Location& destination, float next_leg_bearing_cd = MODE_NEXT_HEADING_UNKNOWN);
 
+    // set desired location and speed (used in RTL, Guided, Auto)
+    //   next_leg_bearing_cd should be heading to the following waypoint (used to slow the vehicle in order to make the turn)
+    virtual void set_desired_location_with_origin(const struct Location& destination, const struct Location& origin, float next_leg_bearing_cd = MODE_NEXT_HEADING_UNKNOWN);
+
+
     // set desired location as offset from the EKF origin, return true on success
     bool set_desired_location_NED(const Vector3f& destination, float next_leg_bearing_cd = MODE_NEXT_HEADING_UNKNOWN);
 
@@ -132,7 +137,7 @@ protected:
     void get_pilot_desired_lateral(float &lateral_out);
 
     // calculate steering output to drive along line from origin to destination waypoint
-    void calc_steering_to_waypoint(const struct Location &origin, const struct Location &destination, bool reversed = false);
+    void calc_steering_to_waypoint(const struct Location &origin, const struct Location &destination, bool reversed = false, const float acc_feedforward=0.0);
 
     // calculate steering angle given a desired lateral acceleration
     void calc_steering_from_lateral_acceleration(float lat_accel, bool reversed = false);
@@ -294,6 +299,7 @@ public:
 
     // set desired location, heading and speed
     void set_desired_location(const struct Location& destination);
+    void set_desired_location_with_origin(const struct Location& destination,const struct Location& origin);
     void set_desired_heading_and_speed(float yaw_angle_cd, float target_speed) override;
 
     // set desired heading-delta, turn-rate and speed

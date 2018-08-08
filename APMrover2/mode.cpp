@@ -148,6 +148,15 @@ void Mode::set_desired_location(const struct Location& destination, float next_l
         // otherwise use reasonable stopping point
         calc_stopping_location(_origin);
     }
+    set_desired_location_with_origin(destination,_origin,next_leg_bearing_cd);
+}
+
+// set desired location
+void Mode::set_desired_location_with_origin(const struct Location& destination, const struct Location& origin, float next_leg_bearing_cd)
+{
+
+    _origin = origin;
+
     _destination = destination;
 
     // initialise distance
@@ -383,7 +392,7 @@ float Mode::calc_reduced_speed_for_turn_or_distance(float desired_speed)
 
 // calculate the lateral acceleration target to cause the vehicle to drive along the path from origin to destination
 // this function updates the _yaw_error_cd value
-void Mode::calc_steering_to_waypoint(const struct Location &origin, const struct Location &destination, bool reversed)
+void Mode::calc_steering_to_waypoint(const struct Location &origin, const struct Location &destination, bool reversed, const float acc_feedforward)
 {
     // record system time of call
     last_steer_to_wp_ms = AP_HAL::millis();
@@ -406,6 +415,7 @@ void Mode::calc_steering_to_waypoint(const struct Location &origin, const struct
         calc_steering_to_heading(desired_heading, g2.pivot_turn_rate);
     } else {
         // call lateral acceleration to steering controller
+        desired_lat_accel+= acc_feedforward;
         calc_steering_from_lateral_acceleration(desired_lat_accel, reversed);
     }
 }

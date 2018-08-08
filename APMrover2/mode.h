@@ -72,6 +72,7 @@ public:
     // set desired location and speed (used in RTL, Guided, Auto)
     //   next_leg_bearing_cd should be heading to the following waypoint (used to slow the vehicle in order to make the turn)
     virtual void set_desired_location(const struct Location& destination, float next_leg_bearing_cd = MODE_NEXT_HEADING_UNKNOWN);
+    void set_desired_location_with_origin(const struct Location& destination, const struct Location& origin, float next_leg_bearing_cd = MODE_NEXT_HEADING_UNKNOWN);
 
     // set desired location as offset from the EKF origin, return true on success
     bool set_desired_location_NED(const Vector3f& destination, float next_leg_bearing_cd = MODE_NEXT_HEADING_UNKNOWN);
@@ -278,6 +279,9 @@ public:
 
     // set desired location, heading and speed
     void set_desired_location(const struct Location& destination);
+
+    void set_desired_location_with_origin(const struct Location& destination, const struct Location& origin);
+
     void set_desired_heading_and_speed(float yaw_angle_cd, float target_speed) override;
 
     // set desired heading-delta, turn-rate and speed

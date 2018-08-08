@@ -832,7 +832,7 @@ void GCS_MAVLINK_Rover::handleMessage(mavlink_message_t* msg)
         if (packet.target != rover.g.sysid_this_mav) {
             break; // only accept control aimed at us
         }
-        
+
         const int16_t roll = (packet.y == INT16_MAX) ? 0 : rover.channel_steer->get_radio_min() + (rover.channel_steer->get_radio_max() - rover.channel_steer->get_radio_min()) * (packet.y + 1000) / 2000.0f;
         const int16_t throttle = (packet.z == INT16_MAX) ? 0 : rover.channel_throttle->get_radio_min() + (rover.channel_throttle->get_radio_max() - rover.channel_throttle->get_radio_min()) * (packet.z + 1000) / 2000.0f;
         RC_Channels::set_override(uint8_t(rover.rcmap.roll() - 1), roll);
@@ -1084,7 +1084,15 @@ void GCS_MAVLINK_Rover::handleMessage(mavlink_message_t* msg)
             }
 
             // set guided mode targets
-            if (!pos_ignore) {
+            if (!pos_ignore && !yaw_ignore) {
+                // consume position target on a bearing line
+                Location origin = target_loc;
+                location_update(origin,target_yaw_cd/100.0,-get_distance(target_loc,rover.current_loc));
+                gcs().send_text(MAV_SEVERITY_INFO,"goto y %f d %f t %d %d o %d %d",
+                                target_yaw_cd/100.0,get_distance(target_loc,rover.current_loc),
+                                                                 target_loc.lat,target_loc.lng,origin.lat,origin.lng);
+                rover.mode_guided.set_desired_location_with_origin(target_loc,origin);
+            } else if (!pos_ignore) {
                 // consume position target
                 rover.mode_guided.set_desired_location(target_loc);
             } else if (pos_ignore && !vel_ignore && acc_ignore && yaw_ignore && yaw_rate_ignore) {

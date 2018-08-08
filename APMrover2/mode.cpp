@@ -148,6 +148,15 @@ void Mode::set_desired_location(const struct Location& destination, float next_l
         // otherwise use reasonable stopping point
         calc_stopping_location(_origin);
     }
+    // use current location as origin
+    set_desired_location_with_origin(destination,_origin,next_leg_bearing_cd);
+}
+
+// set desired location
+void Mode::set_desired_location_with_origin(const struct Location& destination, const struct Location& origin, float next_leg_bearing_cd)
+{
+    // record targets
+    _origin = origin;;
     _destination = destination;
 
     // initialise distance

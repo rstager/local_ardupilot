@@ -4,6 +4,8 @@
 
 #include <AP_RangeFinder/RangeFinder_Backend.h>
 
+#include <stdio.h>
+
 MAV_TYPE GCS_MAVLINK_Rover::frame_type() const
 {
     if (rover.is_boat()) {
@@ -1054,16 +1056,9 @@ void GCS_MAVLINK_Rover::handleMessage(mavlink_message_t* msg)
             if (!pos_ignore && !yaw_ignore) {
                 // consume position target on a bearing line
                 Location origin = target_loc;
-                location_update(origin,target_yaw_cd/100.0,get_distance(target_loc,rover.current_loc));
-                hal.console->printf("Lat: ");
-                print_latlon(hal.console, target_loc.lat);
-                hal.console->printf(" Lon: ");
-                print_latlon(hal.console, target_loc.lng);
-                hal.console->printf("Lat: ");
-                print_latlon(hal.console, origin.lat);
-                hal.console->printf(" Lon: ");
-                print_latlon(hal.console, origin.lng);
-                hal.console->printf("\n");
+                location_update(origin,target_yaw_cd/100.0,-get_distance(target_loc,rover.current_loc));
+                gcs().send_text(MAV_SEVERITY_INFO, "target_yaw %f distance %f",target_yaw_cd/100.0,get_distance(target_loc,rover.current_loc));
+                gcs().send_text(MAV_SEVERITY_INFO, "target %d %d %d %d",target_loc.lat,target_loc.lng, origin.lat, origin.lng);
                 rover.mode_guided.set_desired_location_with_origin(target_loc,origin);
             } else if (!pos_ignore) {
                 // consume position target

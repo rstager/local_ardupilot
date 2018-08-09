@@ -1084,7 +1084,15 @@ void GCS_MAVLINK_Rover::handleMessage(mavlink_message_t* msg)
             }
 
             // set guided mode targets
-            if (!pos_ignore) {
+            if (!pos_ignore && !yaw_ignore) {
+                // consume position target on a bearing line
+                Location origin = target_loc;
+                location_update(origin,target_yaw_cd/100.0,-get_distance(target_loc,rover.current_loc));
+                gcs().send_text(MAV_SEVERITY_INFO,"goto  %f @ %f t %d %d o %d %d",
+                                get_distance(target_loc,rover.current_loc),target_yaw_cd/100.0,
+                                                                 target_loc.lat,target_loc.lng,origin.lat,origin.lng);
+                rover.mode_guided.set_desired_location_with_origin(target_loc,origin);
+            } else if (!pos_ignore) {
                 // consume position target
                 rover.mode_guided.set_desired_location(target_loc);
             } else if (pos_ignore && !vel_ignore && acc_ignore && yaw_ignore && yaw_rate_ignore) {

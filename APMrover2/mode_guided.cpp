@@ -101,6 +101,19 @@ void ModeGuided::set_desired_location(const struct Location& destination)
     rover.Log_Write_GuidedTarget(_guided_mode, Vector3f(_destination.lat, _destination.lng, 0), Vector3f(_desired_speed, 0.0f, 0.0f));
 }
 
+// set desired location
+void ModeGuided::set_desired_location_with_origin(const struct Location& destination,const struct Location& origin)
+{
+    // call parent
+    Mode::set_desired_location_with_origin(destination, origin);
+
+    // handle guided specific initialisation and logging
+    _guided_mode = ModeGuided::Guided_WP;
+    // TODO: add new log_Write
+    rover.Log_Write_GuidedTarget(_guided_mode, Vector3f(_destination.lat, _destination.lng, 0), Vector3f(_desired_speed, 0.0f, 0.0f));
+}
+
+
 // set desired attitude
 void ModeGuided::set_desired_heading_and_speed(float yaw_angle_cd, float target_speed)
 {

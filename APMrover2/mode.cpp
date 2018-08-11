@@ -99,15 +99,8 @@ void Mode::get_pilot_desired_steering_and_throttle(float &steering_out, float &t
 // set desired location
 void Mode::set_desired_location(const struct Location& destination, float next_leg_bearing_cd)
 {
-    // use current location as origin
-    set_desired_location_with_origin(destination,rover.current_loc,next_leg_bearing_cd);
-}
-
-// set desired location
-void Mode::set_desired_location_with_origin(const struct Location& destination, const struct Location& origin, float next_leg_bearing_cd)
-{
     // record targets
-    _origin = origin;;
+    _origin = rover.current_loc;
     _destination = destination;
 
     // initialise distance

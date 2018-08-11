@@ -1215,6 +1215,7 @@ void GCS_MAVLINK_Rover::handleMessage(mavlink_message_t* msg)
             }
 
             float target_speed = 0.0f;
+            float target_final_speed = 0.0f;
             float target_yaw_cd = 0.0f;
 
             // consume velocity and convert to target speed and heading
@@ -1222,6 +1223,7 @@ void GCS_MAVLINK_Rover::handleMessage(mavlink_message_t* msg)
                 const float speed_max = rover.control_mode->get_speed_default();
                 // convert vector length into a speed
                 target_speed = constrain_float(safe_sqrt(sq(packet.vx) + sq(packet.vy)), -speed_max, speed_max);
+                target_final_speed = constrain_float(packet.vz, -speed_max, speed_max);
                 // convert vector direction to target yaw
                 target_yaw_cd = degrees(atan2f(packet.vy, packet.vx)) * 100.0f;
 
@@ -1261,10 +1263,11 @@ void GCS_MAVLINK_Rover::handleMessage(mavlink_message_t* msg)
                 // consume position target on a bearing line
                 Location origin = target_loc;
                 location_update(origin,target_yaw_cd/100.0,-get_distance(target_loc,rover.current_loc));
+                //rover.mode_guided._desired_speed_final;
                 //gcs().send_text(MAV_SEVERITY_INFO,"goto y %f d %f t %d %d o %d %d",
                 //                target_yaw_cd/100.0,get_distance(target_loc,rover.current_loc),
                 //                                                 target_loc.lat,target_loc.lng,origin.lat,origin.lng);
-                rover.mode_guided.set_desired_location_with_origin(target_loc,origin);
+                rover.mode_guided.set_desired_adv(target_loc,origin,target_speed,target_final_speed,target_turn_rate_cds);
             } else if (!pos_ignore && vel_ignore && acc_ignore && yaw_ignore && yaw_rate_ignore) {
                 // consume position target
                 rover.mode_guided.set_desired_location(target_loc);

@@ -258,7 +258,7 @@ public:
     void set_desired_location(const struct Location& destination);
 
     void set_desired_adv(const struct Location& destination, const struct Location& origin,
-            const float target_speed, const float target_final_speed,const float yaw_rate_cds);
+            const float target_speed, const float target_final_speed,const float yaw_rate_cds, const uint16_t sequence_number);
 
     void set_desired_heading_and_speed(float yaw_angle_cd, float target_speed) override;
 
@@ -283,6 +283,7 @@ protected:
     bool have_attitude_target;  // true if we have a valid attitude target
     uint32_t _des_att_time_ms;  // system time last call to set_desired_attitude was made (used for timeout)
     float _desired_yaw_rate_cds;// target turn rate centi-degrees per second
+    uint16_t _sequence_number; // sequence number to use in mission_item_reached
 };
 
 

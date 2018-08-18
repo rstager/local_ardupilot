@@ -37,18 +37,24 @@ void ModeGuided::update()
         }
         case Guided_ADV:
         {
-            if (!_reached_destination || rover.is_boat()) {
+            if (!_reached_destination) {
                 // check if we've reached the destination
                 _distance_to_destination = get_distance(rover.current_loc, _destination);
+
+                float speed_scaled;
                 if (!_reached_destination && (_distance_to_destination <= rover.g.waypoint_radius || location_passed_point(rover.current_loc, _origin, _destination))) {
                     _reached_destination = true;
-                    rover.gcs().send_mission_item_reached_message(0);
+                    rover.gcs().send_mission_item_reached_message(_sequence_number);
                 }
+
                 // drive towards destination
-                calc_steering_to_waypoint(_reached_destination ? rover.current_loc : _origin, _destination);
-                calc_throttle(calc_reduced_speed_for_turn_or_distance(_desired_speed), true);
-            } else {
-                stop_vehicle();
+                calc_steering_to_waypoint(_origin, _destination);
+                if (!_reached_destination ){
+                    speed_scaled=calc_reduced_speed_for_turn_or_distance(_desired_speed);
+                } else {
+                    speed_scaled=_desired_speed_final;
+                }
+                calc_throttle(speed_scaled, true);
             }
             break;
         }
@@ -99,7 +105,7 @@ void ModeGuided::update()
 // return distance (in meters) to destination
 float ModeGuided::get_distance_to_destination() const
 {
-    if (_guided_mode != Guided_WP || _reached_destination) {
+    if ((_guided_mode != Guided_WP && _guided_mode != Guided_ADV) || _reached_destination) {
         return 0.0f;
     }
     return _distance_to_destination;
@@ -119,16 +125,35 @@ void ModeGuided::set_desired_location(const struct Location& destination)
 // set desired location
 void ModeGuided::set_desired_adv(const struct Location& destination,const struct Location& origin,
                                                   const float target_speed, const float target_final_speed,
-                                                  const float turn_rate_cds)
+                                                  const float turn_rate_cds, const uint16_t sequence_number)
 {
-    // call parent
-    Mode::set_desired_location(destination);
+    // can't call parent because it assumes the origin...this will be a maintenance headache, but we need to do the same as parent
+    have_attitude_target = true;
+    _des_att_time_ms = AP_HAL::millis();
+
+    // record targets
+    _origin = origin;
+    _destination = destination;
+
+    // initialise distance
+    _distance_to_destination = get_distance(_origin, _destination);
+    _reached_destination = false;
+
+    // set final desired speed
+    _desired_speed_final = target_final_speed;
+
 
     // handle guided specific initialisation and logging
     _guided_mode = ModeGuided::Guided_ADV;
     _desired_speed=target_speed;
-    _desired_speed_final = target_final_speed; // Override parent speed_final
     _desired_yaw_rate_cds = turn_rate_cds; //
+    _sequence_number = sequence_number;
+
+//    gcs().send_text(MAV_SEVERITY_INFO,"goto yaw %f d %f", turn_rate_cds/100.0,get_distance(destination,rover.current_loc));
+//    gcs().send_text(MAV_SEVERITY_INFO,"goto target %d %d ", destination.lat,destination.lng,origin.lat,origin.lng);
+//    gcs().send_text(MAV_SEVERITY_INFO,"goto origin %d %d", origin.lat,origin.lng);
+//    gcs().send_text(MAV_SEVERITY_INFO,"goto spd %f %f seq %d", target_speed,target_final_speed,sequence_number);
+
 
     // TODO: add new log_Write
     rover.Log_Write_GuidedTarget(_guided_mode, Vector3f(_destination.lat, _destination.lng, 0), Vector3f(_desired_speed, 0.0f, 0.0f));

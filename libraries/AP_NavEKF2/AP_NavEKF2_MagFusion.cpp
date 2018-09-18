@@ -992,6 +992,7 @@ void NavEKF2_core::fuseEulerYaw(bool usePredictedYaw, bool useExternalYawSensor)
         }
     }
     if (healthyFusion) {
+        //printf("healtyFusion yaw %f pred %f innov %f ratio %f \n", yawAngDataDelayed.yawAng,yawAngPredicted ,innovation,yawTestRatio);
         // update the covariance matrix
         for (uint8_t i= 0; i<=stateIndexLim; i++) {
             for (uint8_t j= 0; j<=stateIndexLim; j++) {
@@ -1019,6 +1020,7 @@ void NavEKF2_core::fuseEulerYaw(bool usePredictedYaw, bool useExternalYawSensor)
         faultStatus.bad_yaw = false;
 
     } else {
+        //printf("UNHEALTHY Fusion\n");
         // record fusion numerical health status
         faultStatus.bad_yaw = true;
     }

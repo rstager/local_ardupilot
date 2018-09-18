@@ -272,7 +272,7 @@ void SITL_State::_update_gps_ubx(const struct gps_data *d, uint8_t instance)
         uint8_t reserved2[4]; 
     } pvt;
 
-    struct PACKED ubx_nav_posrelned {
+    struct PACKED ubx_nav_relposned {
         uint16_t resv1;
         uint16_t reference_station;
         uint32_t time;                                  // GPS msToW
@@ -287,7 +287,7 @@ void SITL_State::_update_gps_ubx(const struct gps_data *d, uint8_t instance)
         uint32_t east_accuracy;
         uint32_t down_accuracy;
         uint32_t flags;
-    } posrelned;
+    } relposned;
 
     const uint8_t MSG_POSLLH = 0x2;
     const uint8_t MSG_STATUS = 0x3;
@@ -295,7 +295,7 @@ void SITL_State::_update_gps_ubx(const struct gps_data *d, uint8_t instance)
     const uint8_t MSG_VELNED = 0x12;
     const uint8_t MSG_SOL = 0x6;
     const uint8_t MSG_PVT = 0x7;
-    const uint8_t MSG_POSRELNED = 0x3c;
+    const uint8_t MSG_RELPOSNED = 0x3c;
     uint16_t time_week;
     uint32_t time_week_ms;
 
@@ -331,9 +331,9 @@ void SITL_State::_update_gps_ubx(const struct gps_data *d, uint8_t instance)
     velned.heading_accuracy = 4;
 
     if (instance == _sitl->gpshdg ) {
-        posrelned.resv1 = 0;
-        posrelned.reference_station = 1;
-        posrelned.time = time_week_ms;                                  // GPS msToW
+        relposned.resv1 = 0;
+        relposned.reference_station = 1;
+        relposned.time = time_week_ms;                                  // GPS msToW
         Matrix3f dcm=sitl_model->get_dcm();
         Vector3f baseline;
         if (_sitl->gpshdg == 0)
@@ -341,17 +341,17 @@ void SITL_State::_update_gps_ubx(const struct gps_data *d, uint8_t instance)
         else
             baseline=(Vector3f)_sitl->gps2_pos_offset-(Vector3f)_sitl->gps_pos_offset;
         Vector3f oriented=dcm*baseline;
-        posrelned.ned_north =oriented.x*100;
-        posrelned.ned_east =oriented.y*100;
-        posrelned.ned_down =oriented.z*100;
-        posrelned.ned_north_highres =((int)(oriented.x*10000))%100;
-        posrelned.ned_east_highres =((int)(oriented.y*10000))%100;
-        posrelned.ned_down_highres =((int)(oriented.z*10000))%100;
-        posrelned.resv2 = 0;
-        posrelned.north_accuracy = 100;
-        posrelned.east_accuracy = 100;
-        posrelned.down_accuracy = 100;
-        posrelned.flags = 0x37;
+        relposned.ned_north =oriented.x*100;
+        relposned.ned_east =oriented.y*100;
+        relposned.ned_down =oriented.z*100;
+        relposned.ned_north_highres =((int)(oriented.x*10000))%100;
+        relposned.ned_east_highres =((int)(oriented.y*10000))%100;
+        relposned.ned_down_highres =((int)(oriented.z*10000))%100;
+        relposned.resv2 = 0;
+        relposned.north_accuracy = 100;
+        relposned.east_accuracy = 100;
+        relposned.down_accuracy = 100;
+        relposned.flags = 0x37;
     }
 
     memset(&sol, 0, sizeof(sol));
@@ -409,7 +409,7 @@ void SITL_State::_update_gps_ubx(const struct gps_data *d, uint8_t instance)
     _gps_send_ubx(MSG_DOP,    (uint8_t*)&dop, sizeof(dop), instance);
     _gps_send_ubx(MSG_PVT,    (uint8_t*)&pvt, sizeof(pvt), instance);
     if (instance == _sitl->gpshdg)
-        _gps_send_ubx(MSG_POSRELNED, (uint8_t *) &posrelned, sizeof(pvt), instance);
+        _gps_send_ubx(MSG_RELPOSNED, (uint8_t *) &relposned, sizeof(pvt), instance);
 
 }
 

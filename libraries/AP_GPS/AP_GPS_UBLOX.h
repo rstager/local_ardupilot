@@ -273,7 +273,7 @@ private:
         uint32_t speed_accuracy;
         uint32_t heading_accuracy;
     };
-    struct PACKED ubx_nav_posrelned {
+    struct PACKED ubx_nav_relposned {
         uint16_t resv1;
         uint16_t reference_station;
         uint32_t time;                                  // GPS msToW
@@ -416,7 +416,7 @@ private:
         ubx_nav_solution solution;
         ubx_nav_pvt pvt;
         ubx_nav_velned velned;
-        ubx_nav_posrelned posrelned;
+        ubx_nav_relposned relposned;
         ubx_cfg_msg_rate msg_rate;
         ubx_cfg_msg_rate_6 msg_rate_6;
         ubx_cfg_nav_settings nav_settings;
@@ -467,7 +467,7 @@ private:
         MSG_NAV_SVINFO = 0x30,
         MSG_RXM_RAW = 0x10,
         MSG_RXM_RAWX = 0x15,
-        MSG_POSRELNED = 0x3c,
+        MSG_RELPOSNED = 0x3c,
     };
     enum ubx_gnss_identifier {
         GNSS_GPS     = 0x00,

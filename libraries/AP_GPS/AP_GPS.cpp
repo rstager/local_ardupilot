@@ -261,7 +261,7 @@ const AP_Param::GroupInfo AP_GPS::var_info[] = {
 
     // @Param: HDG_GPS
     // @DisplayName: Heading GPS, gets RTCM3 data from the other gps
-    // @Description: GPS is used for heading only, using POSRELNED.
+    // @Description: GPS is used for heading only, using RELPOSNED.
     // @Values: 0:first GPS,1:2nd GPS,GPS_HDGGPS_NONE:none
     // @User: Advanced
     AP_GROUPINFO("HDG_GPS",   22, AP_GPS, _hdggps, GPS_HDGGPS_NONE),

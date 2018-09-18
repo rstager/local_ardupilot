@@ -1054,19 +1054,19 @@ AP_GPS_UBLOX::_parse_gps(void)
 #endif
         _new_speed = true;
         break;
-    case MSG_POSRELNED:
-        Debug("MSG_POSRELNED");
+    case MSG_RELPOSNED:
+        Debug("MSG_RELPOSNED");
 
-        _last_posrel_time   = _buffer.posrelned.time;
-        state.time_week_ms  = _buffer.posrelned.time;
+        _last_posrel_time   = _buffer.relposned.time;
+        state.time_week_ms  = _buffer.relposned.time;
         state.rtk_baseline_coords_type=1;
-        state.rtk_baseline_x_mm= _buffer.posrelned.ned_north*10+_buffer.posrelned.ned_north_highres/10; /// NED north
-        state.rtk_baseline_y_mm= _buffer.posrelned.ned_east*10+_buffer.posrelned.ned_east_highres/10; /// NED east
-        state.rtk_baseline_z_mm= _buffer.posrelned.ned_down*10+_buffer.posrelned.ned_down_highres/10; /// NED down
+        state.rtk_baseline_x_mm= _buffer.relposned.ned_north*10+_buffer.relposned.ned_north_highres/10; /// NED north
+        state.rtk_baseline_y_mm= _buffer.relposned.ned_east*10+_buffer.relposned.ned_east_highres/10; /// NED east
+        state.rtk_baseline_z_mm= _buffer.relposned.ned_down*10+_buffer.relposned.ned_down_highres/10; /// NED down
         //< Current estimate of 3D baseline accuracy (receiver dependent, typical 0 to 9999)
 
         // accuracy is in 0.1mm, rtk_baseline is in mm, accuracy milli-radians
-        state.rtk_accuracy =norm(_buffer.posrelned.north_accuracy,_buffer.posrelned.east_accuracy)/
+        state.rtk_accuracy =norm(_buffer.relposned.north_accuracy,_buffer.relposned.east_accuracy)/
                 norm(state.rtk_baseline_x_mm,state.rtk_baseline_y_mm)*100;
         // Should probably do something with flags 0x37 is a good measurement
         break;

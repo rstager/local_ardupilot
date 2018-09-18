@@ -259,6 +259,13 @@ const AP_Param::GroupInfo AP_GPS::var_info[] = {
     // @User: Advanced
     AP_GROUPINFO("BLEND_TC", 21, AP_GPS, _blend_tc, 10.0f),
 
+    // @Param: HDG_GPS
+    // @DisplayName: Heading GPS, gets RTCM3 data from the other gps
+    // @Description: GPS is used for heading only, using POSRELNED.
+    // @Values: 0:first GPS,1:2nd GPS,GPS_HDGGPS_NONE:none
+    // @User: Advanced
+    AP_GROUPINFO("HDG_GPS",   22, AP_GPS, _hdggps, GPS_HDGGPS_NONE),
+
     AP_GROUPEND
 };
 
@@ -1330,6 +1337,9 @@ void AP_GPS::calc_blended_state(void)
 
     // combine the states into a blended solution
     for (uint8_t i=0; i<GPS_MAX_RECEIVERS; i++) {
+        // exclude the hdg gps from blending
+        if (state[i].instance == _hdggps)
+            continue;
         // use the highest status
         if (state[i].status > state[GPS_BLENDED_INSTANCE].status) {
             state[GPS_BLENDED_INSTANCE].status = state[i].status;
@@ -1530,6 +1540,27 @@ bool AP_GPS::prepare_for_arming(void) {
     }
     return all_passed;
 }
+
+bool AP_GPS::get_yaw(uint8_t instance, float &yaw,float & accuracy, uint32_t &time_ms)  const {
+    // HDGGPS Yaw measurement
+    if ( _hdggps == instance  || instance == 127){
+        int hdg_index =(instance==127)?_hdggps:instance;
+        int reference_index = 1 -hdg_index; // The other gps is assumed to be the reference
+
+        Vector3f ref_to_rover_bf = _antenna_offset[hdg_index];
+        ref_to_rover_bf -= _antenna_offset[reference_index];
+
+        // calcuate the yaw angle from reference to rover antenna and correct for body positioning
+        Vector2f ref_to_rover_ef= Vector2f((float)state[hdg_index].rtk_baseline_x_mm,(float)state[hdg_index].rtk_baseline_y_mm);
+        yaw = wrap_PI(atan2f(ref_to_rover_ef.y,ref_to_rover_ef.x) - atan2f(ref_to_rover_bf.y,ref_to_rover_bf.x));
+        accuracy=state[hdg_index].rtk_accuracy*0.001;
+        time_ms=state[hdg_index].last_gps_time_ms;
+        return true;
+    } else {
+        return false;
+    }
+}
+
 
 namespace AP {
 

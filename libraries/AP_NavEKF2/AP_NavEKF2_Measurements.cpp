@@ -524,6 +524,12 @@ void NavEKF2_core::readGpsData()
 
             frontend->logging.log_gps = true;
 
+            float yaw,accuracy;
+            uint32_t time_ms;
+            if(gps.get_yaw(yaw,accuracy, time_ms)) {
+                writeEulerYawAngle(yaw,accuracy, time_ms, 2);
+            }
+
         } else {
             // report GPS fix status
             gpsCheckStatus.bad_fix = true;
@@ -767,6 +773,28 @@ void NavEKF2_core::readRngBcnData()
     rngBcnDataToFuse = storedRangeBeacon.recall(rngBcnDataDelayed,imuDataDelayed.time_ms);
 
 }
+
+/********************************************************
+*              Independant yaw sensor measurements      *
+********************************************************/
+
+void NavEKF2_core::writeEulerYawAngle(float yawAngle, float yawAngleErr, uint32_t timeStamp_ms, uint8_t type)
+{
+    // limit update rate to maximum allowed by sensor buffers and fusion process
+    // don't try to write to buffer until the filter has been initialised
+    if (((timeStamp_ms - yawMeasTime_ms) < frontend->fusionTimeStep_ms) || !statesInitialised) {
+        return;
+    }
+    yawAngDataNew.yawAng = yawAngle;
+    yawAngDataNew.yawAngErr = yawAngleErr;
+    yawAngDataNew.type = type;
+    yawAngDataNew.time_ms = timeStamp_ms;
+    storedYawAng.push(yawAngDataNew);
+    yawMeasTime_ms = timeStamp_ms;
+}
+
+
+
 
 /*
   update timing statistics structure

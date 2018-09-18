@@ -317,6 +317,12 @@ void NavEKF2_core::InitialiseVariables()
     memset(&rngBcnFusionReport, 0, sizeof(rngBcnFusionReport));
     last_gps_idx = 0;
 
+    // yaw sensor fusion
+    yawMeasTime_ms = 0;
+    memset(&yawAngDataNew, 0, sizeof(yawAngDataNew));
+    memset(&yawAngDataDelayed, 0, sizeof(yawAngDataDelayed));
+    storedYawAng.init(10);
+
     // zero data buffers
     storedIMU.reset();
     storedGPS.reset();
@@ -508,7 +514,7 @@ void NavEKF2_core::UpdateFilter(bool predict)
         // Predict the covariance growth
         CovariancePrediction();
 
-        // Update states using  magnetometer data
+        // Update states using  magnetometer or external yaw sensor data
         SelectMagFusion();
 
         // Update states using GPS and altimeter data

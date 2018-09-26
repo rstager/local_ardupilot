@@ -1543,7 +1543,7 @@ bool AP_GPS::prepare_for_arming(void) {
 
 bool AP_GPS::get_yaw(uint8_t instance, float &yaw,float & accuracy, uint32_t &time_ms)  const {
     // HDGGPS Yaw measurement
-    if ( _hdggps == instance  || instance == 127){
+    if (_hdggps != 127 && (_hdggps == instance  || instance == 127)){
         int hdg_index =(instance==127)?_hdggps:instance;
         int reference_index = 1 -hdg_index; // The other gps is assumed to be the reference
 

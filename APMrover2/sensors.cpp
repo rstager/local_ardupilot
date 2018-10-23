@@ -279,6 +279,7 @@ void Rover::button_update(void)
 // uses the MAV_SYS_STATUS_* values from mavlink. If a bit is set
 // then it indicates that the sensor or subsystem is present but
 // not functioning correctly.
+int mag_health_loop=0;
 void Rover::update_sensor_status_flags(void)
 {
     // default sensors present
@@ -326,7 +327,7 @@ void Rover::update_sensor_status_flags(void)
 
     // default to all healthy except compass and gps which we set individually
     control_sensors_health = control_sensors_present & (~MAV_SYS_STATUS_SENSOR_3D_MAG & ~MAV_SYS_STATUS_SENSOR_GPS);
-    if (g.compass_enabled && compass.healthy(0) && ahrs.use_compass()) {
+    if (g.compass_enabled && compass.healthy(0) ){ // && ahrs.use_compass()) {
         control_sensors_health |= MAV_SYS_STATUS_SENSOR_3D_MAG;
     }
     if (gps.is_healthy()) {

@@ -779,8 +779,8 @@ void NavEKF2_core::FuseMagnetometer()
  *                    This uses an innovation set to zero which prevents uncontrolled quaternion covaraince growth.
  * UseExternalYawSensor - Set this to true if yaw data from an external yaw sensor is being used instead of the magnetometer.
  */
-void NavEKF2_core::fuseEulerYaw(bool usePredictedYaw, bool useExternalYawSensor)
-{
+int innov_loop_cnt=0;
+void NavEKF2_core::fuseEulerYaw(bool usePredictedYaw, bool useExternalYawSensor) {
     float q0 = stateStruct.quat[0];
     float q1 = stateStruct.quat[1];
     float q2 = stateStruct.quat[2];
@@ -947,8 +947,12 @@ void NavEKF2_core::fuseEulerYaw(bool usePredictedYaw, bool useExternalYawSensor)
     }
 
     // calculate the innovation test ratio
-    yawTestRatio = sq(innovation) / (sq(MAX(0.01f * (float)frontend->_yawInnovGate, 1.0f)) * varInnov);
-
+    yawTestRatio = sq(innovation) / (sq(MAX(0.01f * (float) frontend->_yawInnovGate, 1.0f)) * varInnov);
+    if (innov_loop_cnt++ % 1000 == 0) {
+        gcs().send_text(MAV_SEVERITY_INFO, "yaw innov %9.5f",(float) innovation);
+        gcs().send_text(MAV_SEVERITY_INFO, "yaw ratio %5.3f gate %6d varI %f",
+                    yawTestRatio, frontend->_yawInnovGate, (float) varInnov);
+    }
     // Declare the magnetometer unhealthy if the innovation test fails
     if (yawTestRatio > 1.0f) {
         magHealth = false;

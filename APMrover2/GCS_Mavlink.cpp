@@ -1266,7 +1266,7 @@ void GCS_MAVLINK_Rover::handleMessage(mavlink_message_t* msg)
                 // consume position target on a bearing line
                 Location origin = target_loc;
                 location_update(origin,target_yaw_cd/100.0,-get_distance(target_loc,rover.current_loc));
-                rover.mode_guided.set_desired_adv(target_loc,origin,target_speed,target_final_speed,target_turn_rate_cds,sequence_number);
+                rover.mode_guided.set_desired_adv(target_loc,origin,target_speed,target_final_speed,target_yaw_cd/100.0,target_turn_rate_cds,sequence_number);
             } else if (!pos_ignore && vel_ignore && acc_ignore && yaw_ignore && yaw_rate_ignore) {
                 // consume position target
                 rover.mode_guided.set_desired_location(target_loc);

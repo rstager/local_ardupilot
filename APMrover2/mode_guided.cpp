@@ -45,6 +45,7 @@ void ModeGuided::update()
                 if (!_reached_destination && (_distance_to_destination <= rover.g.waypoint_radius || location_passed_point(rover.current_loc, _origin, _destination))) {
                     _reached_destination = true;
                     rover.gcs().send_mission_item_reached_message(_sequence_number);
+                    _des_att_time_ms = AP_HAL::millis(); // we are repurposing this as a timer for next guided_target.
                 }
 
                 // drive towards destination
@@ -55,6 +56,19 @@ void ModeGuided::update()
                     speed_scaled=_desired_speed_final;
                 }
                 calc_throttle(speed_scaled, true);
+            } else {
+                // continue to fly along this path, expecting an update within 2 seconds.
+                if (have_attitude_target && (millis() - _des_att_time_ms) > 2000) {
+                    gcs().send_text(MAV_SEVERITY_WARNING, "target not updated within  2 secs, stopping");
+                    have_attitude_target = false;
+                }
+                if (have_attitude_target) {
+                    calc_steering_to_waypoint(_origin, _extended_destination);
+                    calc_throttle(_desired_speed_final, true);
+                } else {
+                    stop_vehicle();
+                    g2.motors.set_steering(0.0f);
+                }
             }
             break;
         }
@@ -125,6 +139,7 @@ void ModeGuided::set_desired_location(const struct Location& destination)
 // set desired location
 void ModeGuided::set_desired_adv(const struct Location& destination,const struct Location& origin,
                                                   const float target_speed, const float target_final_speed,
+                                                  const float target_final_yaw,
                                                   const float turn_rate_cds, const uint16_t sequence_number)
 {
     // can't call parent because it assumes the origin...this will be a maintenance headache, but we need to do the same as parent
@@ -134,6 +149,8 @@ void ModeGuided::set_desired_adv(const struct Location& destination,const struct
     // record targets
     _origin = origin;
     _destination = destination;
+    _extended_destination=destination;
+    location_update(_extended_destination,target_final_yaw,target_final_speed*2.0);
 
     // initialise distance
     _distance_to_destination = get_distance(_origin, _destination);

@@ -149,6 +149,7 @@ protected:
     // private members for waypoint navigation
     Location _origin;           // origin Location (vehicle will travel from the origin to the destination)
     Location _destination;      // destination Location when in Guided_WP
+    Location _extended_destination; // destination while waiting for next target in guided_ap mode
     float _distance_to_destination; // distance from vehicle to final destination in meters
     bool _reached_destination;  // true once the vehicle has reached the destination
     float _desired_yaw_cd;      // desired yaw in centi-degrees
@@ -258,7 +259,8 @@ public:
     void set_desired_location(const struct Location& destination);
 
     void set_desired_adv(const struct Location& destination, const struct Location& origin,
-            const float target_speed, const float target_final_speed,const float yaw_rate_cds, const uint16_t sequence_number);
+            const float target_speed, const float target_final_speed,const float target_final_yaw,
+                         const float yaw_rate_cds, const uint16_t sequence_number);
 
     void set_desired_heading_and_speed(float yaw_angle_cd, float target_speed) override;
 

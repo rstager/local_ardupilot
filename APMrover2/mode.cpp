@@ -294,7 +294,7 @@ float Mode::calc_reduced_speed_for_turn_or_distance(float desired_speed)
 
 // calculate the lateral acceleration target to cause the vehicle to drive along the path from origin to destination
 // this function updates the _yaw_error_cd value
-void Mode::calc_steering_to_waypoint(const struct Location &origin, const struct Location &destination, bool reversed)
+void Mode::calc_steering_to_waypoint(const struct Location &origin, const struct Location &destination, bool reversed, float accel_bias)
 {
     // Calculate the required turn of the wheels
     // negative error = left turn
@@ -302,6 +302,7 @@ void Mode::calc_steering_to_waypoint(const struct Location &origin, const struct
     rover.nav_controller->set_reverse(reversed);
     rover.nav_controller->update_waypoint(origin, destination);
     float desired_lat_accel = rover.nav_controller->lateral_acceleration();
+    desired_lat_accel += accel_bias;
     if (reversed) {
         _yaw_error_cd = wrap_180_cd(rover.nav_controller->target_bearing_cd() - ahrs.yaw_sensor + 18000);
     } else {

@@ -106,7 +106,7 @@ protected:
     void get_pilot_desired_steering_and_throttle(float &steering_out, float &throttle_out);
 
     // calculate steering output to drive along line from origin to destination waypoint
-    void calc_steering_to_waypoint(const struct Location &origin, const struct Location &destination, bool reversed = false);
+    void calc_steering_to_waypoint(const struct Location &origin, const struct Location &destination, bool reversed = false, float accel_bias=0.0f);
 
     // calculate steering angle given a desired lateral acceleration
     void calc_steering_from_lateral_acceleration(float lat_accel, bool reversed = false);
@@ -150,6 +150,7 @@ protected:
     Location _origin;           // origin Location (vehicle will travel from the origin to the destination)
     Location _destination;      // destination Location when in Guided_WP
     Location _extended_destination; // destination while waiting for next target in guided_ap mode
+    float _accel_bias;         // an acceleration bias for turns
     float _distance_to_destination; // distance from vehicle to final destination in meters
     bool _reached_destination;  // true once the vehicle has reached the destination
     float _desired_yaw_cd;      // desired yaw in centi-degrees

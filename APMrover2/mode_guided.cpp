@@ -49,7 +49,8 @@ void ModeGuided::update()
                 }
 
                 // drive towards destination
-                calc_steering_to_waypoint(_origin, _destination);
+                calc_steering_to_waypoint(_origin, _destination, false, _accel_bias);
+
                 if (!_reached_destination ){
                     speed_scaled=calc_reduced_speed_for_turn_or_distance(_desired_speed);
                 } else {
@@ -142,6 +143,8 @@ void ModeGuided::set_desired_adv(const struct Location& destination,const struct
                                                   const float target_final_yaw,
                                                   const float turn_rate_cds, const uint16_t sequence_number)
 {
+    if (sequence_number!=0)
+        gcs().send_text(MAV_SEVERITY_INFO, "%9.3f seconds without command",(AP_HAL::millis()-_des_att_time_ms)/1000.);
     // can't call parent because it assumes the origin...this will be a maintenance headache, but we need to do the same as parent
     have_attitude_target = true;
     _des_att_time_ms = AP_HAL::millis();
@@ -151,6 +154,7 @@ void ModeGuided::set_desired_adv(const struct Location& destination,const struct
     _destination = destination;
     _extended_destination=destination;
     location_update(_extended_destination,target_final_yaw,target_final_speed*2.0);
+    _accel_bias=turn_rate_cds;
 
     // initialise distance
     _distance_to_destination = get_distance(_origin, _destination);

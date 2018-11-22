@@ -83,7 +83,8 @@ float SimRover::calc_lat_accel(float steering_angle, float speed)
     float accel = radians(yaw_rate) * speed;
     return accel;
 }
-
+int cntr=0;
+float prev_speed=0.0;
 /*
   update the rover simulation by one time step
  */
@@ -131,6 +132,7 @@ void SimRover::update(const struct sitl_input &input)
 
     // add in accel due to direction change
     accel_body.y += radians(yaw_rate) * speed;
+    //accel_body.x -= radians(yaw_rate) * speed;
 
     // now in earth frame
     Vector3f accel_earth = dcm * accel_body;
@@ -145,6 +147,17 @@ void SimRover::update(const struct sitl_input &input)
 
     // new velocity vector
     velocity_ef += accel_earth * delta_time;
+
+    float tmpspeed = speed+accel*delta_time;
+    //velocity_ef = dcm * Vector3f(tmpspeed,0,0);
+
+    if (cntr++ %1000 == 0) {
+        float yaw, roll, pitch;
+        dcm.to_euler(&roll, &pitch, &yaw);
+
+        printf("SITL speed %6.3f vx %6.3f vy %6.3f heading %6.3f yaw %6.3f\n",tmpspeed, velocity_ef.x, velocity_ef.y,
+               degrees(atan2(velocity_ef.y, velocity_ef.x)), degrees(yaw));
+    }
 
     // new position vector
     position += velocity_ef * delta_time;

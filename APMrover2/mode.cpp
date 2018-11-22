@@ -301,8 +301,14 @@ void Mode::calc_steering_to_waypoint(const struct Location &origin, const struct
     // positive error = right turn
     rover.nav_controller->set_reverse(reversed);
     rover.nav_controller->update_waypoint(origin, destination);
-    float desired_lat_accel = rover.nav_controller->lateral_acceleration();
-    desired_lat_accel += accel_bias;
+
+    float desired_lat_accel;
+    if (accel_bias == 0.0f) {
+        desired_lat_accel = rover.nav_controller->lateral_acceleration();
+    } else {
+        desired_lat_accel = accel_bias;
+    }
+
     if (reversed) {
         _yaw_error_cd = wrap_180_cd(rover.nav_controller->target_bearing_cd() - ahrs.yaw_sensor + 18000);
     } else {
@@ -315,6 +321,7 @@ void Mode::calc_steering_to_waypoint(const struct Location &origin, const struct
             desired_lat_accel = -g.turn_max_g * GRAVITY_MSS;
         }
     }
+//    printf("calc_steering lat_accel %f accel_bias %f \n",desired_lat_accel,accel_bias);
 
     // call lateral acceleration to steering controller
     calc_steering_from_lateral_acceleration(desired_lat_accel, reversed);

@@ -312,6 +312,7 @@ void AP_L1_Control::update_waypoint(const struct Location &prev_WP, const struct
 
         Nu = Nu1 + Nu2;
         _nav_bearing = atan2f(AB.y, AB.x) + Nu1; // bearing (radians) from AC to L1 point
+//        printf(" wp %5.2f l1dist %5.2f\n",WP_A_dist , _L1_dist);
     }
 
     _prevent_indecision(Nu);
@@ -320,7 +321,7 @@ void AP_L1_Control::update_waypoint(const struct Location &prev_WP, const struct
     //Limit Nu to +-(pi/2)
     Nu = constrain_float(Nu, -1.5708f, +1.5708f);
     _latAccDem = K_L1 * groundSpeed * groundSpeed / _L1_dist * sinf(Nu);
-
+//    printf("update_waypoint latAcc %10.5f Nu %6.2f speed %5.2f along %5.2f cross %5.2f \n",_latAccDem, Nu, groundSpeed,alongTrackDist,_crosstrack_error);
     // Waypoint capture status is always false during waypoint following
     _WPcircle = false;
 

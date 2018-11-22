@@ -150,6 +150,14 @@ protected:
     Location _origin;           // origin Location (vehicle will travel from the origin to the destination)
     Location _destination;      // destination Location when in Guided_WP
     Location _extended_destination; // destination while waiting for next target in guided_ap mode
+    Location _center;           // center of an arc
+    Vector3f _target_final_vector;
+    float _direction;
+    float _CL1;                 // constant for closed loop arc
+    float _radius;              // radius of arc
+    float _d_prev;              // previous d used to compute d.dot
+    float _d_prev_time;         // time of previous d calculation
+    float _target_final_yaw_radians;   // Yaw at end of command
     float _accel_bias;         // an acceleration bias for turns
     float _distance_to_destination; // distance from vehicle to final destination in meters
     bool _reached_destination;  // true once the vehicle has reached the destination
@@ -260,8 +268,8 @@ public:
     void set_desired_location(const struct Location& destination);
 
     void set_desired_adv(const struct Location& destination, const struct Location& origin,
-            const float target_speed, const float target_final_speed,const float target_final_yaw,
-                         const float yaw_rate_cds, const uint16_t sequence_number);
+            const float target_speed, const float target_final_speed,const float target_final_yaw_degree,
+                         const float radius, const uint16_t sequence_number);
 
     void set_desired_heading_and_speed(float yaw_angle_cd, float target_speed) override;
 
@@ -276,6 +284,7 @@ protected:
         Guided_HeadingAndSpeed,
         Guided_TurnRateAndSpeed,
         Guided_ADV,
+        Guided_Arc,
     };
 
     bool _enter() override;
@@ -287,6 +296,7 @@ protected:
     uint32_t _des_att_time_ms;  // system time last call to set_desired_attitude was made (used for timeout)
     float _desired_yaw_rate_cds;// target turn rate centi-degrees per second
     uint16_t _sequence_number; // sequence number to use in mission_item_reached
+
 };
 
 

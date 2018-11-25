@@ -113,32 +113,66 @@ void Rover::send_location(mavlink_channel_t chan)
     } else {
         fix_time = millis();
     }
-    const Vector3f &vel = gps.velocity();
+//    const Vector3f &vel = gps.velocity();
+//    mavlink_msg_global_position_int_send(
+//        chan,
+//        fix_time,
+//        current_loc.lat,                    // in 1E7 degrees
+//        current_loc.lng,                    // in 1E7 degrees
+//        current_loc.alt * 10UL,             // millimeters above sea level
+//        (current_loc.alt - home.alt) * 10,  // millimeters above home
+//        vel.x * 100,   // X speed cm/s (+ve North)
+//        vel.y * 100,   // Y speed cm/s (+ve East)
+//        vel.z * -100,  // Z speed cm/s (+ve up)
+//        ahrs.yaw_sensor);
+    Vector2f vel = ahrs.groundspeed_vector();
+
+    Location loc;
+    ahrs.get_position(loc);
+
     mavlink_msg_global_position_int_send(
-        chan,
-        fix_time,
-        current_loc.lat,                    // in 1E7 degrees
-        current_loc.lng,                    // in 1E7 degrees
-        current_loc.alt * 10UL,             // millimeters above sea level
-        (current_loc.alt - home.alt) * 10,  // millimeters above home
-        vel.x * 100,   // X speed cm/s (+ve North)
-        vel.y * 100,   // Y speed cm/s (+ve East)
-        vel.z * -100,  // Z speed cm/s (+ve up)
-        ahrs.yaw_sensor);
+            chan,
+            fix_time,
+            loc.lat,                    // in 1E7 degrees
+            loc.lng,                    // in 1E7 degrees
+            loc.alt * 10UL,             // millimeters above sea level
+            (loc.alt - home.alt) * 10,  // millimeters above home
+            vel.x * 100,   // X speed cm/s (+ve North)
+            vel.y * 100,   // Y speed cm/s (+ve East)
+            0,  // Z speed cm/s (+ve up)
+            degrees(ahrs.yaw)*100);
 }
 
 void Rover::send_nav_controller_output(mavlink_channel_t chan)
 {
-    mavlink_msg_nav_controller_output_send(
-        chan,
-        g2.attitude_control.get_desired_lat_accel(),
-        ahrs.groundspeed() * ins.get_gyro().z,  // use nav_pitch to hold actual Y accel
-        nav_controller->nav_bearing_cd() * 0.01f,
-        nav_controller->target_bearing_cd() * 0.01f,
-        MIN(control_mode->get_distance_to_destination(), UINT16_MAX),
-        0,
-        control_mode->speed_error(),
-        nav_controller->crosstrack_error());
+    ModeGuided *ptr=(ModeGuided*)control_mode;
+    if (control_mode == &rover.mode_guided
+        // && ((ModeGuided*)control_mode)->_guided_mode == ModeGuided::Guided_ADV
+        && ptr->_radius >0) {
+        mavlink_msg_nav_controller_output_send(
+                chan,
+                ptr->_nav_lat_accel,
+                ahrs.groundspeed() * ins.get_gyro().z,  // use nav_pitch to hold actual Y accel
+                degrees(ptr->_nav_bearing),
+                degrees(ptr->_nav_target_bearing),
+                MIN(degrees(ptr->_nav_target_distance), UINT16_MAX),
+                0,
+                ptr->speed_error(),
+                ptr->_nav_xtrack);
+
+    } else {
+            mavlink_msg_nav_controller_output_send(
+            chan,
+            g2.attitude_control.get_desired_lat_accel(),
+            ahrs.groundspeed() * ins.get_gyro().z,  // use nav_pitch to hold actual Y accel
+            nav_controller->nav_bearing_cd() * 0.01f,
+            nav_controller->target_bearing_cd() * 0.01f,
+            MIN(control_mode->get_distance_to_destination(), UINT16_MAX),
+            0,
+            control_mode->speed_error(),
+            nav_controller->crosstrack_error());
+
+    }
 }
 
 void Rover::send_servo_out(mavlink_channel_t chan)
@@ -1266,7 +1300,8 @@ void GCS_MAVLINK_Rover::handleMessage(mavlink_message_t* msg)
                 // consume position target on a bearing line
                 Location origin = target_loc;
                 location_update(origin,target_yaw_cd/100.0,-get_distance(target_loc,rover.current_loc));
-                rover.mode_guided.set_desired_adv(target_loc,origin,target_speed,target_final_speed,target_yaw_cd/100.0,packet.yaw_rate,sequence_number);
+                rover.mode_guided.set_desired_adv(target_loc,origin,target_speed,target_final_speed,target_yaw_cd/100.0,packet.yaw_rate,sequence_number,
+                packet.afx,packet.afy,packet.afz);
             } else if (!pos_ignore && vel_ignore && acc_ignore && yaw_ignore && yaw_rate_ignore) {
                 // consume position target
                 rover.mode_guided.set_desired_location(target_loc);

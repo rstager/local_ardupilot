@@ -149,16 +149,8 @@ protected:
     // private members for waypoint navigation
     Location _origin;           // origin Location (vehicle will travel from the origin to the destination)
     Location _destination;      // destination Location when in Guided_WP
-    Location _extended_destination; // destination while waiting for next target in guided_ap mode
-    Location _center;           // center of an arc
-    Vector3f _target_final_vector;
-    float _direction;
-    float _CL1;                 // constant for closed loop arc
-    float _radius;              // radius of arc
-    float _d_prev;              // previous d used to compute d.dot
-    float _d_prev_time;         // time of previous d calculation
-    float _target_final_yaw_radians;   // Yaw at end of command
-    float _accel_bias;         // an acceleration bias for turns
+
+
     float _distance_to_destination; // distance from vehicle to final destination in meters
     bool _reached_destination;  // true once the vehicle has reached the destination
     float _desired_yaw_cd;      // desired yaw in centi-degrees
@@ -269,13 +261,31 @@ public:
 
     void set_desired_adv(const struct Location& destination, const struct Location& origin,
             const float target_speed, const float target_final_speed,const float target_final_yaw_degree,
-                         const float radius, const uint16_t sequence_number);
+                         const float radius_with_sign, const uint16_t sequence_number,
+                         const float p1, const float p2, const float p3);
 
     void set_desired_heading_and_speed(float yaw_angle_cd, float target_speed) override;
 
     // set desired heading-delta, turn-rate and speed
     void set_desired_heading_delta_and_speed(float yaw_delta_cd, float target_speed);
     void set_desired_turn_rate_and_speed(float turn_rate_cds, float target_speed);
+public:
+    Location _extended_destination; // destination while waiting for next target in guided_ap mode
+    Location _center;           // center of an arc
+    Vector3f _target_final_vector;
+    float _direction;
+    float _CL1;                 // constant for closed loop arc
+    float CL1_Ratio;         // used to compute L1 for turns based on radius
+    float _radius;              // radius of arc
+    float _d_prev;              // previous d used to compute d.dot
+    float _d_prev_time;         // time of previous d calculation
+    float _target_final_yaw_radians;   // Yaw at end of command
+    bool _use_loiter;
+    float _nav_lat_accel;
+    float _nav_bearing;
+    float _nav_target_bearing;
+    float _nav_target_distance;
+    float _nav_xtrack;
 
 protected:
 

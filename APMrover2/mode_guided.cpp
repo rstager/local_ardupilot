@@ -47,45 +47,85 @@ void ModeGuided::update()
                         _reached_destination = true;
                         rover.gcs().send_mission_item_reached_message(_sequence_number);
                         _des_att_time_ms = AP_HAL::millis(); // we are repurposing this as a timer for next guided_target.
-                        printf("dist_to_destination %f o-d %f, o-loc %f\n",_distance_to_destination,
-                               location_diff(_origin, _destination).length(),location_diff(_origin, rover.current_loc).length());
+//                        printf("dist_to_destination %f o-d %f, o-loc %f\n",_distance_to_destination,
+//                               location_diff(_origin, _destination).length(),location_diff(_origin, rover.current_loc).length());
                     }
 
                     // drive towards destination
                     calc_steering_to_waypoint(_origin, _destination, false);
                 } else {
-                    float d=location_diff(rover.current_loc, _center).length()-_radius;
-                    Vector3f ned(1.0,0.0,0.0);
-                    Vector3f velocity(cos(rover.ahrs.yaw)*rover.ground_speed,sin(rover.ahrs.yaw)*rover.ground_speed,0);
-                    //rover.ahrs.get_velocity_NED(velocity);
-                    Vector3f headingNED(cos(rover.ahrs.yaw),sin(rover.ahrs.yaw),0);
-                    float V=velocity.length();
-                    float d_time= AP_HAL::millis()/1000.;
-                    float ddot = (d-_d_prev)/(d_time-_d_prev_time);
-                    float VCL1 = V*_CL1;
-                    float accel_adj = 2*VCL1*(ddot+VCL1*d);
+                    Location location;
 
-                    float lat_accel = V*V/_radius + accel_adj;
+                    if( ahrs.get_position(location)) {
+                        Vector2f  rvec=location_diff(_center,location);
+                        float rangle=atan2(rvec.y,rvec.x);
+                        Vector3f tangent(cos(rangle+M_PI_2*_direction),sin(rangle+M_PI_2*_direction),0);
+                        float d=rvec.length()-_radius;
+                        Vector3f ned(1.0,0.0,0.0);
+                        //Vector3f velocity(cos(rover.ahrs.yaw)*rover.ground_speed,sin(rover.ahrs.yaw)*rover.ground_speed,0);
+                        Vector2f gvec= ahrs.groundspeed_vector();
+                        Vector3f velocity(gvec.x,gvec.y,0);
+                        Vector3f headingNED(cos(rover.ahrs.yaw),sin(rover.ahrs.yaw),0);  // just used for end detect
 
-                    calc_steering_from_lateral_acceleration(lat_accel);
-                    Vector3f cross=headingNED % _target_final_vector;
-                    float indicator=cross.z;
-                    if (cross.x<0) {
-                        indicator *= -1;
-                    }
+//                        rover.ahrs.get_velocity_NED(velocity);
+//                        rover.ahrs.get_velocity_NED(headingNED);
+//                        headingNED.normalize();
 
-                    printf("yaw %f accel %f v %f @ %f, target @%f result @%f dir %f d %f ddot %f accel_adj %f delta_t %f \n",degrees(rover.ahrs.yaw),
-                           velocity.length(),lat_accel, degrees(velocity.angle(ned)),
-                           degrees(ned.angle(_target_final_vector)),indicator,_direction,
-                           d,ddot, accel_adj,d_time-_d_prev_time);
-                    _d_prev_time=d_time;
-                    _d_prev = d;
-                    if (!_reached_destination && (headingNED % _target_final_vector).z*_direction<0) {
-                        _reached_destination = true;
-                        rover.gcs().send_mission_item_reached_message(_sequence_number);
-                        _des_att_time_ms = AP_HAL::millis(); // we are repurposing this as a timer for next guided_target.
-                        printf("rotate_complete %f o-d %f, o-loc %f\n",_distance_to_destination,
-                               location_diff(_origin, _destination).length(),location_diff(_origin, rover.current_loc).length());
+                        float V=velocity.length();
+
+                        //V= _desired_speed;
+                        float d_time= AP_HAL::millis()/1000.;
+                        // float ddot = (d-_d_prev)/(d_time-_d_prev_time);
+
+                        Vector3f ddotv = velocity % tangent;
+                        float ddot=ddotv.z*_direction;
+//                        printf("ddot %f angle %f ddotv %f %f %f velocity %f %f %f tangent %f %f %f\n",ddot,
+//                               degrees(velocity.angle(tangent)),
+//                               ddotv.x,ddotv.y,ddotv.z,
+//                        velocity.x,velocity.y,velocity.z,tangent.x,tangent.y,tangent.z);
+
+                        float VCL1 = V*_CL1;
+                        float accel_adj = 2*VCL1*(ddot+VCL1*d);
+                        float base_accel = V*V/_radius;
+                        float lat_accel = (base_accel + accel_adj)*_direction;
+
+                        if (_use_loiter) {
+                            rover.nav_controller->update_loiter(_center, _radius,_direction);
+                            lat_accel = rover.nav_controller->lateral_acceleration();
+                        }
+
+                        calc_steering_from_lateral_acceleration(lat_accel);
+
+                        // detect end of turn
+                        Vector3f cross=velocity % _target_final_vector;
+                        float indicator=cross.z*_direction;
+                        if (cross.x<0) {
+//                            printf("Toggle indicator\n");
+                            indicator *= -1;
+                        }
+//                        printf("rvec %f %f rangle %f tangent %f %f gvec %f %f cross %f",rvec.x,rvec.y,rangle,tangent.x,tangent.y,
+//                        gvec.x,gvec.y,cross.z);
+                        _nav_lat_accel=lat_accel;
+                        _nav_bearing=degrees(atan2(rvec.y,rvec.x))+90.0*_direction;
+                        _nav_target_bearing=_nav_bearing;
+                        _nav_target_distance=_radius*ned.angle(_target_final_vector);
+                        _nav_xtrack=d;
+
+//                        printf("yaw %f accel_tot %f accel %f accel_adj %f V %f @ %f, target @%f result @%f dir %f d %f ddot %f delta_t %f \n",degrees(rover.ahrs.yaw),
+//                               lat_accel,base_accel,accel_adj,V, degrees(velocity.angle(ned)),
+//                               degrees(ned.angle(_target_final_vector)),indicator,_direction,
+//                               d,ddot, d_time-_d_prev_time);
+                        _d_prev_time=d_time;
+                        _d_prev = d;
+                        if (!_reached_destination && indicator < 0) {
+                            _reached_destination = true;
+                            rover.gcs().send_mission_item_reached_message(_sequence_number);
+                            _des_att_time_ms = AP_HAL::millis(); // we are repurposing this as a timer for next guided_target.
+//                            printf("rotate_complete %f o-d %f, o-loc %f\n",_distance_to_destination,
+//                                   location_diff(_origin, _destination).length(),location_diff(_origin, location).length());
+                        }
+                    } else {
+//                        printf("Position not available\n");
                     }
 
                 }
@@ -180,7 +220,8 @@ void ModeGuided::set_desired_location(const struct Location& destination)
 void ModeGuided::set_desired_adv(const struct Location& destination,const struct Location& origin,
                                                   const float target_speed, const float target_final_speed,
                                                   const float target_final_yaw_degree,
-                                                  const float radius, const uint16_t sequence_number)
+                                                  const float radius_with_sign, const uint16_t sequence_number,
+                                 const float p1, const float p2, const float p3)
 {
     if (sequence_number!=0)
         gcs().send_text(MAV_SEVERITY_INFO, "%9.3f seconds without command",(AP_HAL::millis()-_des_att_time_ms)/1000.);
@@ -205,25 +246,29 @@ void ModeGuided::set_desired_adv(const struct Location& destination,const struct
     // handle guided specific initialisation and logging
     _guided_mode = ModeGuided::Guided_ADV;
     _desired_speed=target_speed;
-    _radius = radius;
+    _radius = fabs(radius_with_sign);
     _sequence_number = sequence_number;
-    _target_final_yaw_radians = radians(target_final_yaw_degree);
-
-
-
-    if (radius>0) {
-        _direction= (radius>0)?1:-1;
-        float radial_angle=_target_final_yaw_radians+M_PI_2*_direction;
+    float lead_angle=p2;
+    _direction= (radius_with_sign>0)?1:-1;
+    _target_final_yaw_radians = radians(target_final_yaw_degree-lead_angle*_direction);
+    _use_loiter = p3>0.0;
+    if (_radius != 0) {
+        float radial_angle_degrees=target_final_yaw_degree+90.0*_direction;
         _center = _destination;
-        location_update(_center,radial_angle,_radius);
+        location_update(_center,radial_angle_degrees,_radius);
         _target_final_vector(cos(_target_final_yaw_radians),sin(_target_final_yaw_radians),0.0);
-        float L1=2.0;
+        CL1_Ratio=0.75;
+        float L1= CL1_Ratio * _radius;
+        L1=p1;
+//        printf("L1 %f radius_with_sign %f\n",L1,_radius);
         _CL1=sqrt(1/pow(L1,2)-pow(1/(2*_radius),2));
-        printf("radius %f direction %f center %d %d dest %d %d target yaw %f final %f %f CL1 %f\n",_radius,_direction,_center.lat,_center.lng,
-               _destination.lat,_destination.lng, degrees(_target_final_yaw_radians),_target_final_vector.x,_target_final_vector.y,_CL1);
+//        printf("loiter %d lead %f radius_with_sign %f radial angle %f direction %f center %d %d dest %d %d target yaw %f final %f %f CL1 %f\n",
+//               _use_loiter, lead_angle, _radius,
+//               radial_angle_degrees, _direction,_center.lat,_center.lng,
+//               _destination.lat,_destination.lng, degrees(_target_final_yaw_radians),_target_final_vector.x,_target_final_vector.y,_CL1);
     }
 
-//    gcs().send_text(MAV_SEVERITY_INFO,"goto yaw %f d %f", radius/100.0,get_distance(destination,rover.current_loc));
+//    gcs().send_text(MAV_SEVERITY_INFO,"goto yaw %f d %f", radius_with_sign/100.0,get_distance(destination,rover.current_loc));
 //    gcs().send_text(MAV_SEVERITY_INFO,"goto target %d %d ", destination.lat,destination.lng,origin.lat,origin.lng);
 //    gcs().send_text(MAV_SEVERITY_INFO,"goto origin %d %d", origin.lat,origin.lng);
 //    gcs().send_text(MAV_SEVERITY_INFO,"goto spd %f %f seq %d", target_speed,target_final_speed,sequence_number);

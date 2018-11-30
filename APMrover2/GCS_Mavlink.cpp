@@ -140,7 +140,7 @@ void Rover::send_location(mavlink_channel_t chan)
             vel.x * 100,   // X speed cm/s (+ve North)
             vel.y * 100,   // Y speed cm/s (+ve East)
             0,  // Z speed cm/s (+ve up)
-            degrees(ahrs.yaw)*100);
+            degrees((ahrs.yaw>0)?ahrs.yaw:(ahrs.yaw+M_2PI))*100);
 }
 
 void Rover::send_nav_controller_output(mavlink_channel_t chan)
@@ -153,8 +153,8 @@ void Rover::send_nav_controller_output(mavlink_channel_t chan)
                 chan,
                 ptr->_nav_lat_accel,
                 ahrs.groundspeed() * ins.get_gyro().z,  // use nav_pitch to hold actual Y accel
-                degrees(ptr->_nav_bearing),
-                degrees(ptr->_nav_target_bearing),
+                ptr->_nav_bearing,
+                ptr->_nav_target_bearing,
                 MIN(degrees(ptr->_nav_target_distance), UINT16_MAX),
                 0,
                 ptr->speed_error(),

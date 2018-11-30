@@ -281,6 +281,7 @@ public:
     float _d_prev_time;         // time of previous d calculation
     float _target_final_yaw_radians;   // Yaw at end of command
     bool _use_loiter;
+    float _turn_gain;
     float _nav_lat_accel;
     float _nav_bearing;
     float _nav_target_bearing;

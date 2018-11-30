@@ -207,10 +207,15 @@ void NavEKF2_core::getWind(Vector3f &wind) const
 
 // return the NED velocity of the body frame origin in m/s
 //
+bool getVelNED_first=true;
 void NavEKF2_core::getVelNED(Vector3f &vel) const
 {
     // correct for the IMU position offset (EKF calculations are at the IMU)
     vel = outputDataNew.velocity + velOffsetNED;
+    if (getVelNED_first) {
+
+        getVelNED_first=false;
+    }
 }
 
 // Return the rate of change of vertical position in the down diection (dPosD/dt) of the body frame origin in m/s

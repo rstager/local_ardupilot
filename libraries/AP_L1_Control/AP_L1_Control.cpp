@@ -228,10 +228,10 @@ void AP_L1_Control::update_waypoint(const struct Location &prev_WP, const struct
 
     //Calculate groundspeed
     float groundSpeed = _groundspeed_vector.length();
-    if (groundSpeed < 0.1f) {
+    if (groundSpeed < 2.0f) {
         // use a small ground speed vector in the right direction,
         // allowing us to use the compass heading at zero GPS velocity
-        groundSpeed = 0.1f;
+        // groundSpeed = 0.1f;
         _groundspeed_vector = Vector2f(cosf(get_yaw()), sinf(get_yaw())) * groundSpeed;
     }
 

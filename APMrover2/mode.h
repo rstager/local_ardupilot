@@ -106,7 +106,7 @@ protected:
     void get_pilot_desired_steering_and_throttle(float &steering_out, float &throttle_out);
 
     // calculate steering output to drive along line from origin to destination waypoint
-    void calc_steering_to_waypoint(const struct Location &origin, const struct Location &destination, bool reversed = false, float accel_bias=0.0f);
+    void calc_steering_to_waypoint(const struct Location &origin, const struct Location &destination, bool reversed = false);
 
     // calculate steering angle given a desired lateral acceleration
     void calc_steering_from_lateral_acceleration(float lat_accel, bool reversed = false);
@@ -262,7 +262,7 @@ public:
     void set_desired_adv(const struct Location& destination, const struct Location& origin,
             const float target_speed, const float target_final_speed,const float target_final_yaw_degree,
                          const float radius_with_sign, const uint16_t sequence_number,
-                         const float p1, const float p2, const float p3);
+                         const float p1, const float p2, const float lead_angle_degree);
 
     void set_desired_heading_and_speed(float yaw_angle_cd, float target_speed) override;
 
@@ -275,12 +275,8 @@ public:
     Vector3f _target_final_vector;
     float _direction;
     float _CL1;                 // constant for closed loop arc
-    float CL1_Ratio;         // used to compute L1 for turns based on radius
     float _radius;              // radius of arc
-    float _d_prev;              // previous d used to compute d.dot
-    float _d_prev_time;         // time of previous d calculation
     float _target_final_yaw_radians;   // Yaw at end of command
-    bool _use_loiter;
     float _turn_gain;
     float _nav_lat_accel;
     float _nav_bearing;

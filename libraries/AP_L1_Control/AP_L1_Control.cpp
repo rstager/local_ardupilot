@@ -312,7 +312,6 @@ void AP_L1_Control::update_waypoint(const struct Location &prev_WP, const struct
 
         Nu = Nu1 + Nu2;
         _nav_bearing = atan2f(AB.y, AB.x) + Nu1; // bearing (radians) from AC to L1 point
-//        printf(" wp %5.2f l1dist %5.2f\n",WP_A_dist , _L1_dist);
     }
 
     _prevent_indecision(Nu);

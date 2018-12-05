@@ -56,8 +56,6 @@ void ModeGuided::update()
 
                         // drive towards destination
                         calc_steering_to_waypoint(_origin, _destination, false);
-                        printf("adv straight dist %5.2f passed %5.2f\n", _distance_to_destination,
-                               vtodest * _target_final_yaw_vector);
                     } else {
 
                         Vector2f rvec = location_diff(_center, location);
@@ -71,9 +69,8 @@ void ModeGuided::update()
                         Vector2f velocity(gvec.x * _desired_speed / gvec.length(),
                                           gvec.y * _desired_speed / gvec.length());
 #else
-                        //float groundspeed = ahrs.groundspeed();
-                        float groundspeed=_desired_speed; //
-                        Vector3f velocity(cos(rover.ahrs.yaw)*groundspeed,sin(rover.ahrs.yaw)*groundspeed,0);
+                        float groundspeed=_desired_speed; 
+                        Vector2f velocity(cos(rover.ahrs.yaw)*groundspeed,sin(rover.ahrs.yaw)*groundspeed);
 #endif
                         float V = _desired_speed;
 
@@ -89,7 +86,6 @@ void ModeGuided::update()
                         // detect end of turn
                         float indicator = (velocity % _target_leading_vector) * _direction;
 
-                        printf("adv turn yawrate %7.3f indicator %7.3f\n", lat_accel / V, indicator);
                         if (!_reached_destination && indicator < 0) {
                             _reached_destination = true;
                             rover.gcs().send_mission_item_reached_message(_sequence_number);

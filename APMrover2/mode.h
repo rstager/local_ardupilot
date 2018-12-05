@@ -272,7 +272,8 @@ public:
 public:
     Location _extended_destination; // destination while waiting for next target in guided_ap mode
     Location _center;           // center of an arc
-    Vector3f _target_final_vector;
+    Vector2f _target_leading_vector;
+    Vector2f _target_final_yaw_vector;
     float _direction;
     float _CL1;                 // constant for closed loop arc
     float _radius;              // radius of arc

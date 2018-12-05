@@ -39,78 +39,83 @@ void ModeGuided::update()
         {
             if (!_reached_destination) {
                 float speed_scaled;
-                if (_radius == 0.0 ){
-                    // check if we've reached the destination
-                    _distance_to_destination = get_distance(rover.current_loc, _destination);
+                Location location;
 
-                    if (!_reached_destination && (_distance_to_destination <= rover.g.waypoint_radius || location_passed_point(rover.current_loc, _origin, _destination))) {
-                        _reached_destination = true;
-                        rover.gcs().send_mission_item_reached_message(_sequence_number);
-                        _des_att_time_ms = AP_HAL::millis(); // we are repurposing this as a timer for next guided_target.
-                    }
+                if( ahrs.get_position(location)) {
+                    if (_radius == 0.0) {
+                        // check if we've reached the destination
+                        _distance_to_destination = get_distance(location, _destination);
+                        Vector2f vtodest = location_diff(_destination, location);
 
-                    // drive towards destination
-                    calc_steering_to_waypoint(_origin, _destination, false);
-                } else {
-                    Location location;
+                        if (!_reached_destination && (_distance_to_destination <= rover.g.waypoint_radius ||
+                                                      vtodest * _target_final_yaw_vector > 0)) {
+                            _reached_destination = true;
+                            rover.gcs().send_mission_item_reached_message(_sequence_number);
+                            _des_att_time_ms = AP_HAL::millis(); // we are repurposing this as a timer for next guided_target.
+                        }
 
-                    if( ahrs.get_position(location)) {
-                        Vector2f  rvec=location_diff(_center,location);
-                        float rangle=atan2(rvec.y,rvec.x);
-                        Vector3f tangent(cos(rangle+M_PI_2*_direction),sin(rangle+M_PI_2*_direction),0);
-                        float d=rvec.length()-_radius;
-                        Vector3f ned(1.0,0.0,0.0);
-// This is a hack. The yaw seems to be most accurate in the field, but it lags in SITL, so we use groundspeed in sitl.
+                        // drive towards destination
+                        calc_steering_to_waypoint(_origin, _destination, false);
+                        printf("adv straight dist %5.2f passed %5.2f\n", _distance_to_destination,
+                               vtodest * _target_final_yaw_vector);
+                    } else {
+
+                        Vector2f rvec = location_diff(_center, location);
+                        float rangle = atan2(rvec.y, rvec.x);
+                        Vector2f tangent(cos(rangle + M_PI_2 * _direction), sin(rangle + M_PI_2 * _direction));
+                        float d = rvec.length() - _radius;
+                        Vector2f ned(1.0, 0.0);
+                        // This is a hack. The yaw seems to be most accurate in the field, but it lags in SITL, so we use groundspeed in sitl.
 #if CONFIG_HAL_BOARD == HAL_BOARD_SITL
-                        Vector2f gvec= ahrs.groundspeed_vector();
-                        Vector3f velocity(gvec.x*_desired_speed/gvec.length(),gvec.y*_desired_speed/gvec.length(),0);
+                        Vector2f gvec = ahrs.groundspeed_vector();
+                        Vector2f velocity(gvec.x * _desired_speed / gvec.length(),
+                                          gvec.y * _desired_speed / gvec.length());
 #else
                         //float groundspeed = ahrs.groundspeed();
-			            float groundspeed=_desired_speed; //
+                        float groundspeed=_desired_speed; //
                         Vector3f velocity(cos(rover.ahrs.yaw)*groundspeed,sin(rover.ahrs.yaw)*groundspeed,0);
 #endif
-                        float V= _desired_speed;
+                        float V = _desired_speed;
 
-                        Vector3f ddotv = velocity % tangent;
-                        float ddot=ddotv.z*_direction;
+                        float ddot = (velocity % tangent) * _direction;
 
-                        float VCL1 = V*_CL1;
-                        float accel_adj = 2*VCL1*(ddot+VCL1*d);
-                        float base_accel = V*V/_radius*_turn_gain;
-                        float lat_accel = (base_accel + accel_adj)*_direction;
+                        float VCL1 = V * _CL1;
+                        float accel_adj = 2 * VCL1 * (ddot + VCL1 * d);
+                        float base_accel = V * V / _radius * _turn_gain;
+                        float lat_accel = (base_accel + accel_adj) * _direction;
 
                         calc_steering_from_lateral_acceleration(lat_accel);
 
                         // detect end of turn
-                        Vector3f cross=velocity % _target_final_vector;
-                        float indicator=cross.z*_direction;
+                        float indicator = (velocity % _target_leading_vector) * _direction;
 
+                        printf("adv turn yawrate %7.3f indicator %7.3f\n", lat_accel / V, indicator);
                         if (!_reached_destination && indicator < 0) {
                             _reached_destination = true;
                             rover.gcs().send_mission_item_reached_message(_sequence_number);
                             _des_att_time_ms = AP_HAL::millis(); // we are repurposing this as a timer for next guided_target.
-                            lat_accel=0.0;
+                            lat_accel = 0.0;
                         }
 
                         calc_steering_from_lateral_acceleration(lat_accel);
 
-                        _nav_lat_accel=lat_accel;
-                        _nav_bearing=degrees(atan2(rvec.y,rvec.x))+90.0*_direction;
-                        if (_nav_bearing<0) _nav_bearing+=360;
-                        if (_nav_bearing>360) _nav_bearing+=360;
-                        _nav_target_bearing=_nav_bearing;
-                        _nav_target_distance=_radius*ned.angle(_target_final_vector);
-                        _nav_xtrack=d*_direction;
+                        _nav_lat_accel = lat_accel;
+                        _nav_bearing = degrees(atan2(rvec.y, rvec.x)) + 90.0 * _direction;
+                        if (_nav_bearing < 0) _nav_bearing += 360;
+                        if (_nav_bearing > 360) _nav_bearing += 360;
+                        _nav_target_bearing = _nav_bearing;
+                        _nav_target_distance = _radius * ned.angle(_target_leading_vector);
+                        _nav_xtrack = d * _direction;
 
                     }
-                }
 
-                if (!_reached_destination ){
-                    speed_scaled=calc_reduced_speed_for_turn_or_distance(_desired_speed);
-                } else {
-                    speed_scaled=_desired_speed_final;
+                    if (!_reached_destination) {
+                        speed_scaled = calc_reduced_speed_for_turn_or_distance(_desired_speed);
+                    } else {
+                        speed_scaled = _desired_speed_final;
+                    }
+                    calc_throttle(speed_scaled, true);
                 }
-                calc_throttle(speed_scaled, true);
             } else {
                 // continue to fly along this path, expecting an update within 2 seconds.
                 if (have_attitude_target && (millis() - _des_att_time_ms) > 2000) {
@@ -224,6 +229,7 @@ void ModeGuided::set_desired_adv(const struct Location& destination,const struct
     _desired_speed=target_speed;
     _radius = fabs(radius_with_sign);
     _sequence_number = sequence_number;
+    _target_final_yaw_vector(cos(radians(target_final_yaw_degree)),sin(radians(target_final_yaw_degree)));
 
     // Turn specific config
     if (_radius != 0) {
@@ -236,8 +242,8 @@ void ModeGuided::set_desired_adv(const struct Location& destination,const struct
         location_update(_center,radial_angle_degrees,_radius);
 
         // Determine the yaw that triggers end of turn
-        _target_final_yaw_radians = radians(target_final_yaw_degree-lead_angle_degree*_direction);
-        _target_final_vector(cos(_target_final_yaw_radians),sin(_target_final_yaw_radians),0.0);
+        float _target_leading_yaw_radians = radians(target_final_yaw_degree-lead_angle_degree*_direction);
+        _target_leading_vector(cos(_target_leading_yaw_radians),sin(_target_leading_yaw_radians));
 
         // precalculate acceleration term
         _CL1=sqrt(1/pow(L1_dist,2)-pow(1/(2*_radius),2));

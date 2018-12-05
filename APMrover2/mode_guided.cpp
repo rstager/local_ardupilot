@@ -47,8 +47,9 @@ void ModeGuided::update()
                         _distance_to_destination = get_distance(location, _destination);
                         Vector2f vtodest = location_diff(_destination, location);
 
-                        if (!_reached_destination && (_distance_to_destination <= rover.g.waypoint_radius ||
-                                                      vtodest * _target_final_yaw_vector > 0)) {
+                        if (!_reached_destination && (_distance_to_destination <= rover.g.waypoint_radius
+                                                      || location_passed_point(location, _origin, _destination)
+                                                      || vtodest * _target_final_yaw_vector > 0)) {
                             _reached_destination = true;
                             rover.gcs().send_mission_item_reached_message(_sequence_number);
                             _des_att_time_ms = AP_HAL::millis(); // we are repurposing this as a timer for next guided_target.
@@ -69,7 +70,7 @@ void ModeGuided::update()
                         Vector2f velocity(gvec.x * _desired_speed / gvec.length(),
                                           gvec.y * _desired_speed / gvec.length());
 #else
-                        float groundspeed=_desired_speed; 
+                        float groundspeed=_desired_speed;
                         Vector2f velocity(cos(rover.ahrs.yaw)*groundspeed,sin(rover.ahrs.yaw)*groundspeed);
 #endif
                         float V = _desired_speed;

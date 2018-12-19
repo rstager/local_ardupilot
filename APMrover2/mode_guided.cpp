@@ -64,15 +64,8 @@ void ModeGuided::update()
                         Vector2f tangent(cos(rangle + M_PI_2 * _direction), sin(rangle + M_PI_2 * _direction));
                         float d = rvec.length() - _radius;
                         Vector2f ned(1.0, 0.0);
-                        // This is a hack. The yaw seems to be most accurate in the field, but it lags in SITL, so we use groundspeed in sitl.
-#if CONFIG_HAL_BOARD == HAL_BOARD_SITL
-                        Vector2f gvec = ahrs.groundspeed_vector();
-                        Vector2f velocity(gvec.x * _desired_speed / gvec.length(),
-                                          gvec.y * _desired_speed / gvec.length());
-#else
                         float groundspeed=_desired_speed;
                         Vector2f velocity(cos(rover.ahrs.yaw)*groundspeed,sin(rover.ahrs.yaw)*groundspeed);
-#endif
                         float V = _desired_speed;
 
                         float ddot = (velocity % tangent) * _direction;

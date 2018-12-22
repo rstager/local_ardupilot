@@ -1210,21 +1210,7 @@ void SITL_State::_calc_gps_state(struct gps_data &d,Vector3f posRelOffsetBF,Vect
         d.altitude += _sitl->gps_drift_alt*sinf(AP_HAL::millis()*0.001f*0.02f);
     }
 
-    // add in some GPS lag
-    _gps_data[next_gps_index++] = d;
-    if (next_gps_index >= gps_delay+1) {
-        next_gps_index = 0;
-    }
 
-    d = _gps_data[next_gps_index];
-
-    if (_sitl->gps_delay != gps_delay) {
-        // cope with updates to the delay control
-        gps_delay = _sitl->gps_delay;
-        for (uint8_t i=0; i<gps_delay; i++) {
-            _gps_data[i] = d;
-        }
-    }
 
 
 
@@ -1285,6 +1271,27 @@ void SITL_State::_update_gps(double latitude, double longitude, float altitude,
             speedN, speedE, speedD, have_lock);
     _calc_gps_state(d2,_sitl->gps2_pos_offset,_sitl->gps2_glitch,latitude,longitude, altitude,
                     speedN, speedE, speedD, have_lock);
+
+
+    // add in some GPS lag
+    _gps_data[next_gps_index] = d;
+    _gps2_data[next_gps_index++] = d2;
+    if (next_gps_index >= gps_delay+1) {
+        next_gps_index = 0;
+    }
+
+    d = _gps_data[next_gps_index];
+    d2 = _gps2_data[next_gps_index];
+
+    if (_sitl->gps_delay != gps_delay) {
+        // cope with updates to the delay control
+        gps_delay = _sitl->gps_delay;
+        for (uint8_t i=0; i<gps_delay; i++) {
+            _gps_data[i] = d;
+            _gps2_data[i] = d2;
+        }
+    }
+
 
     if (gps_state.gps_fd == 0 && gps2_state.gps_fd == 0) {
         return;

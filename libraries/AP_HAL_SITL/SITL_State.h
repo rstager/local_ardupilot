@@ -100,6 +100,7 @@ private:
 
 #define MAX_GPS_DELAY 100
     gps_data _gps_data[MAX_GPS_DELAY];
+    gps_data _gps2_data[MAX_GPS_DELAY];
 
     bool _gps_has_basestation_position;
     gps_data _gps_basestation_data;

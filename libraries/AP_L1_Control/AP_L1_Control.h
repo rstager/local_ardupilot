@@ -108,7 +108,8 @@ private:
     AP_Float _L1_period;
     // L1 tracking loop damping ratio
     AP_Float _L1_damping;
-
+    // L1 capture angle
+    AP_Float _L1_capture;
     // previous value of cross-track velocity
     float _last_Nu;
 

@@ -85,6 +85,7 @@ void ModeGuided::update()
                             rover.gcs().send_mission_item_reached_message(_sequence_number);
                             _des_att_time_ms = AP_HAL::millis(); // we are repurposing this as a timer for next guided_target.
                             lat_accel = 0.0;
+                            attitude_control.get_steering_rate_pid().reset_I();
                         }
 
                         calc_steering_from_lateral_acceleration(lat_accel);

@@ -333,6 +333,9 @@ bool Rover::arm_motors(AP_Arming::ArmingMethod method)
 
     // Reset SmartRTL return location. If activated, SmartRTL will ultimately try to land at this point
     g2.smart_rtl.reset_path(true);
+    gcs().send_text(MAV_SEVERITY_INFO, "Reset PIDs");
+    g2.attitude_control.get_steering_rate_pid().reset_I();
+    g2.attitude_control.get_throttle_speed_pid().reset_I();
 
     change_arm_state();
     return true;

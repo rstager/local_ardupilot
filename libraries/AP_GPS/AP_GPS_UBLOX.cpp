@@ -1068,7 +1068,7 @@ AP_GPS_UBLOX::_parse_gps(void)
         // accuracy is in 0.1mm, rtk_baseline is in mm, accuracy milli-radians
         state.rtk_accuracy =norm(_buffer.relposned.north_accuracy,_buffer.relposned.east_accuracy)/
                 norm(state.rtk_baseline_x_mm,state.rtk_baseline_y_mm)*100;
-        if (loop_cnt++ % 1000 == 0) {
+        if (loop_cnt++ % 100 == 0) {
             gcs().send_text(MAV_SEVERITY_INFO, "relposN %d %d", _buffer.relposned.ned_north,
                             _buffer.relposned.ned_east);
             gcs().send_text(MAV_SEVERITY_INFO, "baseline %d %d acc %d",  state.rtk_baseline_x_mm, state.rtk_baseline_y_mm,

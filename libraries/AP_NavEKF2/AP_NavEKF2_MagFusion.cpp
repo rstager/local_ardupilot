@@ -948,7 +948,7 @@ void NavEKF2_core::fuseEulerYaw(bool usePredictedYaw, bool useExternalYawSensor)
 
     // calculate the innovation test ratio
     yawTestRatio = sq(innovation) / (sq(MAX(0.01f * (float) frontend->_yawInnovGate, 1.0f)) * varInnov);
-    if (innov_loop_cnt++ % 1000 == 0) {
+    if (innov_loop_cnt++ % 100 == 0) {
         extern bool getVelNED_first;
         gcs().send_text(MAV_SEVERITY_INFO, "yaw innov %9.5f velned %d",(float) innovation,getVelNED_first );
         gcs().send_text(MAV_SEVERITY_INFO, "yaw ratio %5.3f gate %6d varI %f",

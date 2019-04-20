@@ -274,7 +274,8 @@ private:
         uint32_t heading_accuracy;
     };
     struct PACKED ubx_nav_relposned {
-        uint16_t resv1;
+        uint8_t version;
+        uint8_t resv1;
         uint16_t reference_station;
         uint32_t time;                                  // GPS msToW
         int32_t ned_north;
@@ -287,6 +288,29 @@ private:
         uint32_t north_accuracy;
         uint32_t east_accuracy;
         uint32_t down_accuracy;
+        uint32_t flags;
+    };
+    struct PACKED ubx_nav_relposned_v2 {
+        uint8_t version;
+        uint8_t resv1;
+        uint16_t reference_station;
+        uint32_t time;                                  // GPS msToW
+        int32_t ned_north;
+        int32_t ned_east;
+        int32_t ned_down;
+        int32_t rel_pos_length;
+        int32_t rel_pos_heading;
+        int32_t resvd2;
+        int8_t ned_north_highres;
+        int8_t ned_east_highres;
+        int8_t ned_down_highres;
+        int8_t ned_length_highres;
+        uint32_t north_accuracy;
+        uint32_t east_accuracy;
+        uint32_t down_accuracy;
+        uint32_t length_accuracy;
+        uint32_t heading_accuracy;
+        uint32_t resvd3;
         uint32_t flags;
     };
 
@@ -417,6 +441,7 @@ private:
         ubx_nav_pvt pvt;
         ubx_nav_velned velned;
         ubx_nav_relposned relposned;
+        ubx_nav_relposned_v2 relposnedv2;
         ubx_cfg_msg_rate msg_rate;
         ubx_cfg_msg_rate_6 msg_rate_6;
         ubx_cfg_nav_settings nav_settings;

@@ -110,6 +110,8 @@ const AP_Param::GroupInfo SITL::var_info2[] = {
     AP_GROUPINFO("ARSPD_SIGN",   9, SITL,  arspd_signflip, 0),
     AP_GROUPINFO("GPS2_POS",     10, SITL,  gps2_pos_offset, 0),
     AP_GROUPINFO("GPSHDG",       11, SITL,  gpshdg, 127),
+    AP_GROUPINFO("GPSRTK",       12, SITL,  gpsrtk, 1),
+    AP_GROUPINFO("GPS2RTK",      13, SITL,  gps2rtk, 1),
     AP_GROUPEND
 };
     

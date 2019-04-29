@@ -60,11 +60,10 @@ void Rover::failsafe_trigger(uint8_t failsafe_type, bool on)
     }
 
     failsafe.triggered &= failsafe.bits;
-    uint32_t duration=millis() - failsafe.start_time;
+    uint32_t timeout=(failsafe.bits&FAILSAFE_EVENT_GPS?g.fs_gps_timeout:g.fs_timeout)*1000;
     if (failsafe.triggered == 0 &&
         failsafe.bits != 0 &&
-            (duration > g.fs_timeout * 1000 ||
-             (failsafe.bits&FAILSAFE_EVENT_GPS && duration > g.fs_gps_timeout * 1000 )) &&
+        millis()>=failsafe.start_time+timeout &&
         control_mode != &mode_rtl &&
         control_mode != &mode_hold) {
         failsafe.triggered = failsafe.bits;

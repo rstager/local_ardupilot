@@ -448,6 +448,7 @@ protected:
     AP_Int8 _blend_mask;
     AP_Float _blend_tc;
     AP_Int8 _hdggps;
+    AP_Int8 _gpsrtk;
 
     uint32_t _log_gps_bit = -1;
 

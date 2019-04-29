@@ -1036,7 +1036,9 @@ void GCS_MAVLINK_Rover::handleMessage(mavlink_message_t* msg)
         if (msg->sysid != rover.g.sysid_my_gcs) {  // Only accept control from our gcs
             break;
         }
-
+        if (rover.channel_steer == NULL or rover.channel_throttle==NULL){
+            break;
+        }
         mavlink_manual_control_t packet;
         mavlink_msg_manual_control_decode(msg, &packet);
         

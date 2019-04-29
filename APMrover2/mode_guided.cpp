@@ -3,6 +3,9 @@
 
 bool ModeGuided::_enter()
 {
+    if (rover.failsafe.triggered)
+        return false;
+
     // initialise waypoint speed
     set_desired_speed_to_default();
 

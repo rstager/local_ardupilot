@@ -60,14 +60,21 @@ void Rover::failsafe_trigger(uint8_t failsafe_type, bool on)
     }
 
     failsafe.triggered &= failsafe.bits;
-
+    uint32_t duration=millis() - failsafe.start_time;
     if (failsafe.triggered == 0 &&
         failsafe.bits != 0 &&
-        millis() - failsafe.start_time > g.fs_timeout * 1000 &&
+            (duration > g.fs_timeout * 1000 ||
+             (failsafe.bits&FAILSAFE_EVENT_GPS && duration > g.fs_gps_timeout * 1000 )) &&
         control_mode != &mode_rtl &&
         control_mode != &mode_hold) {
         failsafe.triggered = failsafe.bits;
-        gcs().send_text(MAV_SEVERITY_WARNING, "Failsafe trigger 0x%x", static_cast<uint32_t>(failsafe.triggered));
+
+        gcs().send_text(MAV_SEVERITY_WARNING, "Failsafe trigger 0x%x %s %s %s %s",
+                        static_cast<uint32_t>(failsafe.triggered),
+                        failsafe.bits&FAILSAFE_EVENT_THROTTLE?"Throttle":"",
+                                failsafe.bits&FAILSAFE_EVENT_GCS?"Throttle":"",
+                                failsafe.bits&FAILSAFE_EVENT_RC?"Throttle":"",
+                                failsafe.bits&FAILSAFE_EVENT_GPS?"GPS":"");
         switch (g.fs_action) {
             case 0:
                 break;
@@ -77,9 +84,24 @@ void Rover::failsafe_trigger(uint8_t failsafe_type, bool on)
             case 2:
                 set_mode(mode_hold, MODE_REASON_FAILSAFE);
                 break;
+            case 3:
+                disarm_motors();
+                break;
         }
     }
 }
+void Rover::fs_check(void)
+{
+    if (!g.fs_rtk_enabled)
+        return;
+    uint32_t now = AP_HAL::millis();
+    bool gps_lock_ok = ((now - gps.last_fix_time_ms()) < 1000)
+                       && (gps.status(0) == AP_GPS::GPS_OK_FIX_3D_RTK_FIXED)
+                       && (gps.status(1) == AP_GPS::GPS_OK_FIX_3D_RTK_FIXED);
+
+    failsafe_trigger(FAILSAFE_EVENT_GPS,!gps_lock_ok);
+}
+
 
 #if ADVANCED_FAILSAFE == ENABLED
 /*

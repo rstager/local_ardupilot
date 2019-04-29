@@ -476,6 +476,7 @@ private:
 
     // failsafe.cpp
     void failsafe_trigger(uint8_t failsafe_type, bool on);
+    void fs_check(void);
 #if ADVANCED_FAILSAFE == ENABLED
     void afs_fs_check(void);
 #endif

@@ -236,6 +236,11 @@ void AP_L1_Control::update_waypoint(const struct Location &prev_WP, const struct
 
     //Calculate groundspeed
     float groundSpeed = _groundspeed_vector.length();
+    if (groundSpeed == 0.0){
+        _latAccDem = 0;
+        return;  // This should never happen in real life, but does happen in simulator.
+        // If we are not moving, just ignore this.
+    }
     if (groundSpeed < 2.0f) {
         // use a small ground speed vector in the right direction,
         // allowing us to use the compass heading at zero GPS velocity

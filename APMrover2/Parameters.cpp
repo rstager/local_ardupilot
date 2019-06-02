@@ -126,12 +126,26 @@ const AP_Param::Info Rover::var_info[] = {
     // @User: Standard
     GSCALAR(fs_timeout,    "FS_TIMEOUT",     1.5),
 
+    // @Param: FS_GPS_TIMEOUT
+    // @DisplayName: Failsafe timeout
+    // @Description: How long a failsafe event need to happen for before we trigger the failsafe action
+    // @Units: s
+    // @User: Standard
+    GSCALAR(fs_gps_timeout,    "FS_GPS_TIMEOUT",     1),
+
     // @Param: FS_THR_ENABLE
     // @DisplayName: Throttle Failsafe Enable
     // @Description: The throttle failsafe allows you to configure a software failsafe activated by a setting on the throttle input channel to a low value. This can be used to detect the RC transmitter going out of range. Failsafe will be triggered when the throttle channel goes below the FS_THR_VALUE for FS_TIMEOUT seconds.
     // @Values: 0:Disabled,1:Enabled,2:Enabled Continue with Mission in Auto
     // @User: Standard
     GSCALAR(fs_throttle_enabled,    "FS_THR_ENABLE",     FS_THR_ENABLED),
+
+    // @Param: FS_RTK_ENABLE
+    // @DisplayName: GPS RTK Failsafe Enable
+    // @Description: FAIL IF gps is not RTK
+    // @Values: 0:Disabled,1:Enabled
+    // @User: Standard
+    GSCALAR(fs_rtk_enabled,    "FS_RTK_ENABLE",     1),
 
     // @Param: FS_THR_VALUE
     // @DisplayName: Throttle Failsafe Value

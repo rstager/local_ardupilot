@@ -143,6 +143,8 @@ public:
         k_param_fs_throttle_value,
         k_param_fs_gcs_enabled,
         k_param_fs_crash_check,
+        k_param_fs_rtk_enabled,
+        k_param_fs_gps_timeout,
         k_param_fs_ekf_action,
         k_param_fs_ekf_thresh,  // 187
 
@@ -244,10 +246,12 @@ public:
     // failsafe control
     AP_Int8     fs_action;
     AP_Float    fs_timeout;
+    AP_Float    fs_gps_timeout;
     AP_Int8     fs_throttle_enabled;
     AP_Int16    fs_throttle_value;
     AP_Int8     fs_gcs_enabled;
     AP_Int8     fs_crash_check;
+    AP_Int8     fs_rtk_enabled;
     AP_Int8     fs_ekf_action;
     AP_Float    fs_ekf_thresh;
 

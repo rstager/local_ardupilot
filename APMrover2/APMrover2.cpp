@@ -99,6 +99,7 @@ const AP_Scheduler::Task Rover::scheduler_tasks[] = {
 #endif
     SCHED_TASK(crash_check,            10,    200),
     SCHED_TASK(cruise_learn_update,    50,    200),
+    SCHED_TASK(fs_check,               10,    100),
 #if ADVANCED_FAILSAFE == ENABLED
     SCHED_TASK(afs_fs_check,           10,    200),
 #endif

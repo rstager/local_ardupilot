@@ -38,6 +38,14 @@ const AP_Param::GroupInfo AP_L1_Control::var_info[] = {
     // @User: Advanced
     AP_GROUPINFO_FRAME("LIM_BANK",   3, AP_L1_Control, _loiter_bank_limit, 0.0f, AP_PARAM_FRAME_PLANE),
 
+    // @Param: CAPTURE
+    // @DisplayName: L1 control capture angle
+    // @Description: Capture angle for L1 Control
+    // @Range: 0 90
+    // @Increment: 0.01
+    // @User: Advanced
+    AP_GROUPINFO("CAPTURE",   4, AP_L1_Control, _L1_capture, 45),
+
     AP_GROUPEND
 };
 
@@ -293,6 +301,8 @@ void AP_L1_Control::update_waypoint(const struct Location &prev_WP, const struct
         //Limit sine of Nu1 to provide a controlled track capture angle of 45 deg
         sine_Nu1 = constrain_float(sine_Nu1, -0.7071f, 0.7071f);
         float Nu1 = asinf(sine_Nu1);
+        // Further constraint on Nu1
+        Nu1 = constrain_float(Nu1,-radians(_L1_capture),radians(_L1_capture));
 
         // compute integral error component to converge to a crosstrack of zero when traveling
         // straight but reset it when disabled or if it changes. That allows for much easier

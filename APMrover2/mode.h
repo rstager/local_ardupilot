@@ -207,10 +207,13 @@ protected:
     class AR_AttitudeControl &attitude_control;
 
     // private members for waypoint navigation
+    Location _origin;           // origin Location (vehicle will travel from the origin to the destination)
+    Location _destination;      // destination Location when in Guided_WP
     float _distance_to_destination; // distance from vehicle to final destination in meters
     bool _reached_destination;  // true once the vehicle has reached the destination
     float _desired_yaw_cd;      // desired yaw in centi-degrees.  used in Auto, Guided and Loiter
     float _desired_speed;       // desired speed in m/s
+    float _desired_speed_final; // desired speed in m/s when we reach the destination
 };
 
 
@@ -368,6 +371,12 @@ public:
     // return distance (in meters) to destination
     float get_distance_to_destination() const override;
 
+    // set desired location, heading and speed
+    bool set_desired_adv(const struct Location& destination, const struct Location& origin,
+            const float target_speed, const float target_final_speed,const float target_final_yaw_degree,
+                         const float radius_with_sign, const uint16_t sequence_number,
+                         const float p1, const float p2, const float lead_angle_degree);
+
     // return true if vehicle has reached destination
     bool reached_destination() const override;
 
@@ -381,6 +390,28 @@ public:
     // set desired heading-delta, turn-rate and speed
     void set_desired_heading_delta_and_speed(float yaw_delta_cd, float target_speed);
     void set_desired_turn_rate_and_speed(float turn_rate_cds, float target_speed);
+
+    float wp_bearing() const;
+    float nav_bearing() const;
+    float crosstrack_error() const;
+    float get_desired_lat_accel() const;
+
+public:
+    Location _adv_destination;
+    Location _extended_destination; // destination while waiting for next target in guided_ap mode
+    Location _center;           // center of an arc
+    Vector2f _target_leading_vector;
+    Vector2f _target_final_yaw_vector;
+    float _direction;
+    float _CL1;                 // constant for closed loop arc
+    float _radius;              // radius of arc
+    float _target_final_yaw_degree;   // Yaw at end of command
+    float _turn_gain;
+    bool _turning;
+    float _nav_xtrack;
+    int32_t _nav_bearing_cd;
+    int32_t _wp_bearing_cd;
+    float _desired_lat_accel;
 
     // vehicle start loiter
     bool start_loiter();
@@ -397,6 +428,7 @@ protected:
         Guided_WP,
         Guided_HeadingAndSpeed,
         Guided_TurnRateAndSpeed,
+        Guided_ADV,
         Guided_Loiter
     };
 
@@ -408,6 +440,8 @@ protected:
     bool have_attitude_target;  // true if we have a valid attitude target
     uint32_t _des_att_time_ms;  // system time last call to set_desired_attitude was made (used for timeout)
     float _desired_yaw_rate_cds;// target turn rate centi-degrees per second
+    uint16_t _sequence_number; // sequence number to use in mission_item_reached
+
     bool sent_notification;     // used to send one time notification to ground station
 
     // limits

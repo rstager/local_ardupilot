@@ -680,7 +680,9 @@ void GCS_MAVLINK_Rover::handleMessage(mavlink_message_t* msg)
         if (msg->sysid != rover.g.sysid_my_gcs) {  // Only accept control from our gcs
             break;
         }
-
+        if (rover.channel_steer == NULL or rover.channel_throttle==NULL){
+            break;
+        }
         mavlink_manual_control_t packet;
         mavlink_msg_manual_control_decode(msg, &packet);
 
@@ -898,13 +900,18 @@ void GCS_MAVLINK_Rover::handleMessage(mavlink_message_t* msg)
             }
 
             float target_speed = 0.0f;
+            float target_final_speed = 0.0f;
             float target_yaw_cd = 0.0f;
+            uint16_t sequence_number=0;
 
             // consume velocity and convert to target speed and heading
             if (!vel_ignore) {
                 const float speed_max = rover.control_mode->get_speed_default();
                 // convert vector length into a speed
-                target_speed = constrain_float(safe_sqrt(sq(packet.vx) + sq(packet.vy)), -speed_max, speed_max);
+                target_speed = constrain_float(packet.vx, -speed_max, speed_max);
+                target_final_speed = constrain_float(packet.vy, -speed_max, speed_max);
+                sequence_number = packet.vz;
+
                 // convert vector direction to target yaw
                 target_yaw_cd = degrees(atan2f(packet.vy, packet.vx)) * 100.0f;
 
@@ -940,7 +947,13 @@ void GCS_MAVLINK_Rover::handleMessage(mavlink_message_t* msg)
             }
 
             // set guided mode targets
-            if (!pos_ignore) {
+            if (!pos_ignore && !yaw_ignore && !vel_ignore && !yaw_rate_ignore) {
+                // consume position target on a bearing line
+                Location origin = target_loc;
+                origin.offset_bearing(target_yaw_cd/100.0,-target_loc.get_distance(rover.current_loc));
+                rover.mode_guided.set_desired_adv(target_loc,origin,target_speed,target_final_speed,target_yaw_cd/100.0,packet.yaw_rate,sequence_number,
+                packet.afx,packet.afy,packet.afz);
+            } else if (!pos_ignore && vel_ignore && acc_ignore && yaw_ignore && yaw_rate_ignore) {
                 // consume position target
                 if (!rover.mode_guided.set_desired_location(target_loc)) {
                     // GCS will just need to look at desired location

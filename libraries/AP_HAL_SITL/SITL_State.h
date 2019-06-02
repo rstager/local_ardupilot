@@ -107,6 +107,7 @@ private:
 
 #define MAX_GPS_DELAY 100
     gps_data _gps_data[MAX_GPS_DELAY];
+    gps_data _gps2_data[MAX_GPS_DELAY];
 
     bool _gps_has_basestation_position;
     gps_data _gps_basestation_data;
@@ -127,7 +128,9 @@ private:
     void _nova_send_message(uint8_t *header, uint8_t headerlength, uint8_t *payload, uint8_t payloadlen, uint8_t instance);
     uint32_t CRC32Value(uint32_t icrc);
     uint32_t CalculateBlockCRC32(uint32_t length, uint8_t *buffer, uint32_t crc);
-
+    void _calc_gps_state(struct gps_data &d,Vector3f gps_pos_offset,Vector3f gps_glitch,
+            double latitude, double longitude, float altitude,
+                     double speedN, double speedE, double speedD, bool have_lock);
     void _update_gps(double latitude, double longitude, float altitude,
                      double speedN, double speedE, double speedD, bool have_lock);
     void _update_airspeed(float airspeed);

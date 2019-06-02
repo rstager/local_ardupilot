@@ -173,7 +173,14 @@ void NavEKF2_core::controlMagYawReset()
 // vector from GPS. It is used to align the yaw angle after launch or takeoff.
 void NavEKF2_core::realignYawGPS()
 {
-    if ((sq(gpsDataDelayed.vel.x) + sq(gpsDataDelayed.vel.y)) > 25.0f) {
+    float spdMinSq;
+    if (_ahrs->get_vehicle_class() == AHRS_VEHICLE_GROUND) {
+        spdMinSq = sq(gpsSpdAccuracy) * GPS_SPD_TO_ERR_RATIO_SQ;
+    } else {
+        spdMinSq = 25.0f;
+    }
+
+    if ((sq(gpsDataDelayed.vel.x) + sq(gpsDataDelayed.vel.y)) > spdMinSq) {
         // get quaternion from existing filter states and calculate roll, pitch and yaw angles
         Vector3f eulerAngles;
         stateStruct.quat.to_euler(eulerAngles.x, eulerAngles.y, eulerAngles.z);
@@ -222,6 +229,33 @@ void NavEKF2_core::realignYawGPS()
     }
 }
 
+void NavEKF2_core::alignYawAngle()
+{
+    if (yawAngDataDelayed.type == 2) {
+        Vector3f euler321;
+        stateStruct.quat.to_euler(euler321.x, euler321.y, euler321.z);
+        stateStruct.quat.from_euler(euler321.x, euler321.y, yawAngDataDelayed.yawAng);
+    } else if (yawAngDataDelayed.type == 1) {
+        Vector3f euler312 = stateStruct.quat.to_vector312();
+        stateStruct.quat.from_vector312(euler312.x, euler312.y, yawAngDataDelayed.yawAng);
+    }
+
+
+    zeroAttCovOnly();
+
+
+    // send yaw alignment information to console
+    gcs().send_text(MAV_SEVERITY_INFO, "EKF2 IMU%u yaw alignment complete",(unsigned)imu_index);
+
+
+    // record the yaw reset event
+    recordYawReset();
+
+    // clear any pending yaw reset requests
+    gpsYawResetRequest = false;
+    magYawResetRequest = false;
+}
+
 /********************************************************
 *                   FUSE MEASURED_DATA                  *
 ********************************************************/
@@ -236,6 +270,20 @@ void NavEKF2_core::SelectMagFusion()
     // used for load levelling
     magFusePerformed = false;
 
+    // Handle case where we are using an external yaw sensor instead of a magnetomer
+    if ((frontend->_magCal == 5)) {
+        if (storedYawAng.recall(yawAngDataDelayed,imuDataDelayed.time_ms)) {
+            if (tiltAlignComplete && !yawAlignComplete) {
+                alignYawAngle();
+            } else if (tiltAlignComplete && yawAlignComplete) {
+                fuseEulerYaw(false, true);
+            } else {
+                fuseEulerYaw(true, true);
+            }
+        }
+        return;
+    }
+
     // check for and read new magnetometer measurements
     readMagData();
 
@@ -247,11 +295,11 @@ void NavEKF2_core::SelectMagFusion()
         magTimeout = true;
     }
 
-    // check for availability of magnetometer data to fuse
+    // check for availability of magnetometer or other yaw data to fuse
     magDataToFuse = storedMag.recall(magDataDelayed,imuDataDelayed.time_ms);
 
     // Control reset of yaw and magnetic field states if we are using compass data
-    if (magDataToFuse && use_compass()) {
+    if (magDataToFuse) {
         controlMagYawReset();
     }
 
@@ -261,7 +309,7 @@ void NavEKF2_core::SelectMagFusion()
     if (dataReady) {
         // use the simple method of declination to maintain heading if we cannot use the magnetic field states
         if(inhibitMagStates || magStateResetRequest || !magStateInitComplete) {
-            fuseEulerYaw();
+            fuseEulerYaw(false, false);
             // zero the test ratio output from the inactive 3-axis magnetometer fusion
             magTestRatio.zero();
         } else {
@@ -289,7 +337,7 @@ void NavEKF2_core::SelectMagFusion()
     // filter covariances from becoming badly conditioned
     if (!use_compass()) {
         if (onGround && (imuSampleTime_ms - lastYawTime_ms > 1000)) {
-            fuseEulerYaw();
+            fuseEulerYaw(true, false);
             magTestRatio.zero();
             yawTestRatio = 0.0f;
         }
@@ -755,25 +803,52 @@ void NavEKF2_core::FuseMagnetometer()
  * This fusion method only modifies the orientation, does not require use of the magnetic field states and is computationally cheaper.
  * It is suitable for use when the external magnetic field environment is disturbed (eg close to metal structures, on ground).
  * It is not as robust to magnetometer failures.
- * It is not suitable for operation where the horizontal magnetic field strength is weak (within 30 degrees latitude of the magnetic poles)
-*/
-void NavEKF2_core::fuseEulerYaw()
-{
+ * It is not suitable for operation where the horizontal magnetic field strength is weak (within 30 degrees latitude of the the magnetic poles)
+ * The following booleans are passed to the function to control the fusion process:
+ *
+ * usePredictedYaw -  Set this to true if no valid yaw measurement will be available for an extended periods.
+ *                    This uses an innovation set to zero which prevents uncontrolled quaternion covaraince growth.
+ * UseExternalYawSensor - Set this to true if yaw data from an external yaw sensor is being used instead of the magnetometer.
+ */
+int innov_loop_cnt=0;
+void NavEKF2_core::fuseEulerYaw(bool usePredictedYaw, bool useExternalYawSensor) {
     float q0 = stateStruct.quat[0];
     float q1 = stateStruct.quat[1];
     float q2 = stateStruct.quat[2];
     float q3 = stateStruct.quat[3];
 
-    // compass measurement error variance (rad^2)
-    const float R_YAW = sq(frontend->_yawNoise);
+    // yaw measurement error variance (rad^2)
+    float R_YAW;
+    if (!useExternalYawSensor) {
+        R_YAW = sq(frontend->_yawNoise);
+    } else {
+        R_YAW = sq(yawAngDataDelayed.yawAngErr);
+    }
 
     // calculate observation jacobian, predicted yaw and zero yaw body to earth rotation matrix
     // determine if a 321 or 312 Euler sequence is best
+    bool useEuler321 = true;
+    if (useExternalYawSensor) {
+        // If using an external sensor, the definition of yaw is specified through the sensor interface
+        if (yawAngDataDelayed.type == 2) {
+            useEuler321 = true;
+        } else if (yawAngDataDelayed.type == 1) {
+            useEuler321 = false;
+        } else {
+            // invalid selection
+            return;
+        }
+    } else {
+        // if using the magnetometer, it is determined automatically
+        useEuler321 = (fabsf(prevTnb[0][2]) < fabsf(prevTnb[1][2]));
+    }
+
+    // calculate observation jacobian, predicted yaw and zero yaw body to earth rotation matrix
     float predicted_yaw;
     float measured_yaw;
     float H_YAW[3];
     Matrix3f Tbn_zeroYaw;
-    if (fabsf(prevTnb[0][2]) < fabsf(prevTnb[1][2])) {
+    if (useEuler321) {
         // calculate observation jacobian when we are observing the first rotation in a 321 sequence
         float t2 = q0*q0;
         float t3 = q1*q1;
@@ -816,6 +891,9 @@ void NavEKF2_core::fuseEulerYaw()
             // Get the yaw angle  from the external vision data
             extNavDataDelayed.quat.to_euler(euler321.x, euler321.y, euler321.z);
             measured_yaw =  euler321.z;
+        } else if (useExternalYawSensor) {
+            // Get the yaw angle  from the external yaw sensor
+            measured_yaw =  yawAngDataDelayed.yawAng;
         } else {
             // no data so use predicted to prevent unconstrained variance growth
             measured_yaw = predicted_yaw;
@@ -862,6 +940,9 @@ void NavEKF2_core::fuseEulerYaw()
             // Get the yaw angle  from the external vision data
             euler312 = extNavDataDelayed.quat.to_vector312();
             measured_yaw =  euler312.z;
+        } else if (useExternalYawSensor) {
+            // Get the yaw angle  from the external yaw sensor
+            measured_yaw =  yawAngDataDelayed.yawAng;
         } else {
             // no data so use predicted to prevent unconstrained variance growth
             measured_yaw = predicted_yaw;
@@ -908,8 +989,16 @@ void NavEKF2_core::fuseEulerYaw()
     }
 
     // calculate the innovation test ratio
-    yawTestRatio = sq(innovation) / (sq(MAX(0.01f * (float)frontend->_yawInnovGate, 1.0f)) * varInnov);
-
+    yawTestRatio = sq(innovation) / (sq(MAX(0.01f * (float) frontend->_yawInnovGate, 1.0f)) * varInnov);
+#ifdef DIAGNOSTICS
+    static innov_loop_cnt=0;
+    if (innov_loop_cnt++ % 10000 == 0) {
+        extern bool getVelNED_first;
+        gcs().send_text(MAV_SEVERITY_INFO, "yaw innov %9.5f velned %d",(float) innovation,getVelNED_first );
+        gcs().send_text(MAV_SEVERITY_INFO, "yaw ratio %5.3f gate %6d varI %f",
+                        (float)yawTestRatio,(float) frontend->_yawInnovGate, (float) varInnov);
+    }
+#endif
     // Declare the magnetometer unhealthy if the innovation test fails
     if (yawTestRatio > 1.0f) {
         magHealth = false;

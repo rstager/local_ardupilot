@@ -29,6 +29,9 @@
 #define GPS_MAX_RECEIVERS 2 // maximum number of physical GPS sensors allowed - does not include virtual GPS created by blending receiver data
 #define GPS_MAX_INSTANCES  (GPS_MAX_RECEIVERS + 1) // maximum number of GPS instances including the 'virtual' GPS created by blending receiver data
 #define GPS_BLENDED_INSTANCE GPS_MAX_RECEIVERS  // the virtual blended GPS is always the highest instance (2)
+#define GPS_RTK_INJECT_TO_ALL 127
+#define GPS_HDGGPS_NONE 127
+#define GPS_MAX_RATE_MS 200 // maximum value of rate_ms (i.e. slowest update rate) is 5hz or 200ms
 #define GPS_UNKNOWN_DOP UINT16_MAX // set unknown DOP's to maximum value, which is also correct for MAVLink
 
 // the number of GPS leap seconds
@@ -329,6 +332,29 @@ public:
         return have_vertical_velocity(primary_instance);
     }
 
+    // return number of satellites used for RTK calculation
+    uint8_t rtk_num_sats(uint8_t instance) const {
+        return state[instance].rtk_num_sats;
+    }
+    uint8_t rtk_num_sats(void) const {
+        return rtk_num_sats(primary_instance);
+    }
+
+    // return age of last baseline correction in milliseconds
+    uint32_t rtk_age_ms(uint8_t instance) const {
+        return state[instance].rtk_age_ms;
+    }
+    uint32_t rtk_age_ms(void) const {
+        return rtk_age_ms(primary_instance);
+    }
+
+    // return gps yaw data
+    bool get_yaw(uint8_t instance,float &yaw,float & accuracy, uint32_t &time_ms)  const ;
+    bool get_yaw(float &yaw,float & accuracy, uint32_t &time_ms)  const {
+        return get_yaw((uint8_t)_hdggps,yaw,accuracy, time_ms);
+    }
+
+
     // the expected lag (in seconds) in the position and velocity readings from the gps
     // return true if the GPS hardware configuration is known or the lag parameter has been set manually
     bool get_lag(uint8_t instance, float &lag_sec) const;
@@ -425,6 +451,8 @@ protected:
     AP_Int16 _delay_ms[GPS_MAX_RECEIVERS];
     AP_Int8 _blend_mask;
     AP_Float _blend_tc;
+    AP_Int8 _hdggps;
+    AP_Int8 _gpsrtk;
 
     uint32_t _log_gps_bit = -1;
 

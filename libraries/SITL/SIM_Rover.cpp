@@ -146,6 +146,21 @@ void SimRover::update(const struct sitl_input &input)
     // new velocity vector
     velocity_ef += accel_earth * delta_time;
 
+#ifndef DIAGNOSTICS
+    static int cntr=0;
+    float tmpspeed = speed+accel*delta_time;
+              velocity_ef = dcm * Vector3f(tmpspeed,0,0);
+
+    if (cntr++ %1000 == 0 || speed>1.5 || tmpspeed>1.5) {
+        float yaw, roll, pitch;
+        dcm.to_euler(&roll, &pitch, &yaw);
+
+        printf("SITL pos %11.6f %11.6f speed %6.3f vx %6.3f vy %6.3f heading %6.3f yaw %6.3f deltat %f\n",
+               position.x,position.y,
+               tmpspeed, velocity_ef.x, velocity_ef.y,
+               degrees(atan2f(velocity_ef.y, velocity_ef.x)), degrees(yaw),delta_time);
+    }
+#endif
     // new position vector
     position += velocity_ef * delta_time;
 

@@ -292,6 +292,46 @@ private:
         uint32_t speed_accuracy;
         uint32_t heading_accuracy;
     };
+    struct PACKED ubx_nav_relposned {
+        uint8_t version;
+        uint8_t resv1;
+        uint16_t reference_station;
+        uint32_t time;                                  // GPS msToW
+        int32_t ned_north;
+        int32_t ned_east;
+        int32_t ned_down;
+        int8_t ned_north_highres;
+        int8_t ned_east_highres;
+        int8_t ned_down_highres;
+        uint8_t resv2;
+        uint32_t north_accuracy;
+        uint32_t east_accuracy;
+        uint32_t down_accuracy;
+        uint32_t flags;
+    };
+    struct PACKED ubx_nav_relposned_v2 {
+        uint8_t version;
+        uint8_t resv1;
+        uint16_t reference_station;
+        uint32_t time;                                  // GPS msToW
+        int32_t ned_north;
+        int32_t ned_east;
+        int32_t ned_down;
+        int32_t rel_pos_length;
+        int32_t rel_pos_heading;
+        int32_t resvd2;
+        int8_t ned_north_highres;
+        int8_t ned_east_highres;
+        int8_t ned_down_highres;
+        int8_t ned_length_highres;
+        uint32_t north_accuracy;
+        uint32_t east_accuracy;
+        uint32_t down_accuracy;
+        uint32_t length_accuracy;
+        uint32_t heading_accuracy;
+        uint32_t resvd3;
+        uint32_t flags;
+    };
 
     struct PACKED ubx_nav_timegps {
         uint32_t itow;
@@ -429,6 +469,8 @@ private:
         ubx_nav_pvt pvt;
         ubx_nav_timegps timegps;
         ubx_nav_velned velned;
+        ubx_nav_relposned relposned;
+        ubx_nav_relposned_v2 relposnedv2;
         ubx_cfg_msg_rate msg_rate;
         ubx_cfg_msg_rate_6 msg_rate_6;
         ubx_cfg_nav_settings nav_settings;
@@ -481,7 +523,8 @@ private:
         MSG_MON_VER = 0x04,
         MSG_NAV_SVINFO = 0x30,
         MSG_RXM_RAW = 0x10,
-        MSG_RXM_RAWX = 0x15
+        MSG_RXM_RAWX = 0x15,
+        MSG_RELPOSNED = 0x3c,
     };
     enum ubx_gnss_identifier {
         GNSS_GPS     = 0x00,
@@ -550,6 +593,7 @@ private:
     uint8_t         _class;
     bool            _cfg_saved;
 
+    uint32_t        _last_posrel_time;
     uint32_t        _last_vel_time;
     uint32_t        _last_pos_time;
     uint32_t        _last_cfg_sent_time;

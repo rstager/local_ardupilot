@@ -108,7 +108,7 @@ void ModeGuided::update()
                     } else {
                         speed_scaled = _desired_speed_final;
                     }
-                    calc_throttle(speed_scaled, true);
+                    calc_throttle(speed_scaled, false);
                 }
             } else {
                 // continue to fly along this path, expecting an update within 2 seconds.

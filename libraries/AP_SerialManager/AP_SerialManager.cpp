@@ -335,7 +335,7 @@ void AP_SerialManager::init()
                     state[i].uart->begin(map_baudrate(state[i].baud),
                                          AP_SERIALMANAGER_SBUS1_BUFSIZE_RX,
                                          AP_SERIALMANAGER_SBUS1_BUFSIZE_TX);
-                    state[i].uart->configure_parity(2);    // enable even parity
+                    //state[i].uart->configure_parity(2);    // enable even parity
                     state[i].uart->set_stop_bits(2);
                     state[i].uart->set_unbuffered_writes(true);
                     state[i].uart->set_flow_control(AP_HAL::UARTDriver::FLOW_CONTROL_DISABLE);

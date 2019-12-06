@@ -1,6 +1,5 @@
 #include "mode.h"
 #include "Rover.h"
-
 bool ModeGuided::_enter()
 {
     if (rover.failsafe.triggered)
@@ -71,8 +70,7 @@ void ModeGuided::update()
                     // This is independent if we are on the correct radius, or passed the destination
                     float indicator = (velocity % _target_leading_vector) * _direction;
                     // Or when we pass the finish line
-                    bool indicator2 = rover.current_loc.past_interval_finish_line(_extended_destination, _destination);
-
+                    bool indicator2 = rover.current_loc.past_interval_finish_line(_pre_destination,_destination);
 
                     if ( indicator < 0 || indicator2) {
                         _reached_destination=true;
@@ -300,6 +298,8 @@ bool ModeGuided::set_desired_adv(const struct Location& destination,const struct
     _target_final_yaw_degree = target_final_yaw_degree;
     _extended_destination=destination;
     _extended_destination.offset_bearing(target_final_yaw_degree,_desired_speed_final*2.0);
+    _pre_destination=destination;
+    _pre_destination.offset_bearing(target_final_yaw_degree+180,_desired_speed_final*2.0);
 
     // sequenced based item reached //
     sent_notification=false;

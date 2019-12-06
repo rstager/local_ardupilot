@@ -399,6 +399,7 @@ public:
 public:
     Location _adv_destination;
     Location _extended_destination; // destination while waiting for next target in guided_ap mode
+    Location _pre_destination; // use to define finish line for turn
     Location _center;           // center of an arc
     Vector2f _target_leading_vector;
     Vector2f _target_final_yaw_vector;

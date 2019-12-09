@@ -53,7 +53,16 @@ void ModeGuided::update()
             if (!_reached_destination) {
                 if (!_turning) {
                     // Straight line
-                    navigate_to_waypoint();
+                    //navigate_to_waypoint();
+                    // update navigation controller
+                    g2.wp_nav.update(rover.G_Dt);
+                    _distance_to_destination = g2.wp_nav.get_distance_to_destination();
+
+                    // pass speed to throttle controller after applying nudge from pilot
+                    float desired_speed = g2.wp_nav.get_speed();
+                    calc_throttle(desired_speed, true);
+                    calc_steering_from_turn_rate(g2.wp_nav.get_turn_rate_rads(), desired_speed, g2.wp_nav.get_reversed());
+
                     _reached_destination=g2.wp_nav.reached_destination();
                 } else {
                     // make an arc

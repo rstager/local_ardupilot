@@ -277,9 +277,7 @@ void NavEKF2_core::SelectMagFusion()
                 alignYawAngle();
             } else if (tiltAlignComplete && yawAlignComplete) {
                 fuseEulerYaw(false, true);
-            } else {
-                fuseEulerYaw(true, true);
-            }
+            } 
         }
         return;
     }
